@@ -67,9 +67,9 @@ TEAMS_NOTIFY_DEFAULT_CHANNEL=Alerts
 | Cron job or script folder | `--env-file ./teams.env` alongside your script |
 | Developer laptop | Run `teams-notify configure` once |
 
-### Azure AD setup
+### Entra ID setup
 
-- Create an App Registration in Azure AD
+- Create an App Registration in Entra ID
 - Generate a client secret
 - Grant admin consent for the `ChannelMessage.Send` permission
 - Use the tenant ID, client ID, and client secret as your credentials

@@ -18,7 +18,7 @@ The consumers of the application would be any Admin, .NET user, or developer who
 
 ### Incoming Webhooks — Explored and Rejected
 
-Incoming Webhooks were seriously considered as they require no Azure AD App Registration and are trivial to implement — just an HTTP POST to a URL. However, they were rejected for the following reasons:
+Incoming Webhooks were seriously considered as they require no Entra ID App Registration and are trivial to implement — just an HTTP POST to a URL. However, they were rejected for the following reasons:
 
 - **Deprecated.** Microsoft deprecated Office 365 Connectors in 2024. The replacement is Workflows via Power Automate, which is already ruled out as a Microsoft-specific dependency.
 - **One URL per channel.** Each webhook is tied to a single channel. Managing multiple channels means managing multiple URLs, whereas a single Graph API App Registration covers every team and channel the app has access to.
@@ -26,7 +26,7 @@ Incoming Webhooks were seriously considered as they require no Azure AD App Regi
 - **No channel discovery.** The `list` command cannot be built on webhooks — there is no API to enumerate teams or channels.
 - **Sender identity.** Messages always appear from a connector bot name, not a real identity.
 
-The Graph API requires a one-time Azure AD App Registration and admin consent for `ChannelMessage.Send`, but that cost is paid once per organisation and unlocks all current and future channels without additional configuration.
+The Graph API requires a one-time Entra ID App Registration and admin consent for `ChannelMessage.Send`, but that cost is paid once per organisation and unlocks all current and future channels without additional configuration.
 
 ## Core Use Cases
 
@@ -97,20 +97,20 @@ If `--team` and `--channel` are omitted the tool falls back to `TEAMS_NOTIFY_DEF
 
 ## Authentication
 
-This tool authenticates using Client Credentials (app-only) via an Azure AD App Registration. Managed Identity is not supported as this tool is designed for cross-platform script environments, not Azure-hosted infrastructure.
+This tool authenticates using Client Credentials (app-only) via an Entra ID App Registration. Managed Identity is not supported as this tool is designed for cross-platform script environments, not Azure-hosted infrastructure.
 
 ### Reasoning
 
 - The primary use case is automating scripts on Linux, Mac and Windows servers with no user present — Client Credentials is the only option that works unattended
 - Consumers are admins and developers running the tool in pipelines and cron jobs, not interactively
-- Being open source means users supply their own Azure AD App Registration — credentials via env vars is the standard pattern for this
+- Being open source means users supply their own Entra ID App Registration — credentials via env vars is the standard pattern for this
 - Client Credentials works identically on Linux, Windows, and Mac with no platform-specific dependencies
 - Device Code Flow adds first-run browser friction, which contradicts the goal of replacing tools that require too much scaffolding
 - Managed Identity only works inside Azure, which this tool explicitly does not require
 
 ### Requirements
 
-- Azure AD App Registration with `client_id` + `client_secret`
+- Entra ID App Registration with `client_id` + `client_secret`
 - Admin consent granted for the `ChannelMessage.Send` permission
 - Credentials supplied via `--env-file`, environment variables, or config file — see Configuration Design
 
@@ -251,7 +251,7 @@ No mocking of the Graph client. If a piece of logic requires mocking the Graph c
 
 ### Integration tests
 
-Run against a real Azure AD tenant and real Teams environment. These are not run in standard CI — they require credentials and are run manually or in a dedicated pipeline with secrets configured.
+Run against a real Entra ID tenant and real Teams environment. These are not run in standard CI — they require credentials and are run manually or in a dedicated pipeline with secrets configured.
 
 - `send` successfully delivers a message to a known channel
 - `list` returns teams and channels for the configured app registration
