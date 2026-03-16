@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/TeamsNotify/TeamsNotify.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/TeamsNotify.Tests/TeamsNotify.Tests.csproj" />
+  </Folder>
+</Solution>
