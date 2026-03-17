@@ -227,34 +227,34 @@ Ordered by dependency — each phase can begin once the previous is complete.
 
 ### Phase 1 — Core Library (`TeamsNotify.Core`)
 
-- [ ] `TeamsCredentials` — already a `record` with `required` properties; no runtime validation needed
-- [ ] `SendMessageRequest` — already a `record` with `required` properties; no runtime validation needed
-- [ ] `AuthService` — implement `BuildGraphClientAsync()` using `ClientSecretCredential` from `Azure.Identity`
-- [ ] `GraphService` — implement `SendMessageAsync(SendMessageRequest)` — channel message with plain text or HTML body and optional subject line
-- [ ] `GraphService` — implement `ResolveTeamIdAsync()` and `ResolveChannelIdAsync()` — GUID passthrough + name lookup via Graph
-- [ ] `GraphService` — implement `ListTeamsAsync()` and `ListChannelsAsync()`
-- [ ] `TeamsNotify.Core.Tests` — unit tests: GUID detection, name resolution input parsing
+- [x] `TeamsCredentials` — already a `record` with `required` properties; no runtime validation needed
+- [x] `SendMessageRequest` — already a `record` with `required` properties; no runtime validation needed
+- [x] `AuthService` — implement `BuildGraphClientAsync()` using `ClientSecretCredential` from `Azure.Identity`
+- [x] `GraphService` — implement `SendMessageAsync(SendMessageRequest)` — channel message with plain text or HTML body and optional subject line
+- [x] `GraphService` — implement `ResolveTeamIdAsync()` and `ResolveChannelIdAsync()` — GUID passthrough + name lookup via Graph
+- [x] `GraphService` — implement `ListTeamsAsync()` and `ListChannelsAsync()`
+- [x] `TeamsNotify.Core.Tests` — unit tests: GUID detection, name resolution input parsing
 
 ### Phase 2 — CLI (`TeamsNotify`)
 
-- [ ] `AppConfig.Validate()` — assert required credential fields are non-null before calling `ToCredentials()`
-- [ ] `ConfigService.LoadAsync()` — resolve credentials from `--env-file` → env vars → config file → exit code `5`
-- [ ] `ConfigService.SaveAsync()` / `GetConfigFilePath()` — persist defaults written by `teams-notify configure`
-- [ ] `Program.cs` — wire `--env-file` as a global option and thread it through to `ConfigService`
-- [ ] `SendCommand` — implement all options: `--message`, `--file`, stdin, `--team`, `--channel`, `--subject`, `--html`, `--dry-run`, `--quiet`
-- [ ] `ListCommand` — implement `--team` option; no argument lists all teams, with `--team` lists channels within it
-- [ ] `ConfigureCommand` — implement interactive/option-based save of tenant, client ID/secret, and channel defaults
-- [ ] Version command — output assembly version and target framework
-- [ ] `TeamsNotify.Tests` — unit tests: arg parsing, config resolution order, exit code mapping, `--dry-run` output
+- [x] `AppConfig.Validate()` — assert required credential fields are non-null before calling `ToCredentials()`
+- [x] `ConfigService.LoadAsync()` — resolve credentials from `--env-file` → env vars → config file → exit code `5`
+- [x] `ConfigService.SaveAsync()` / `GetConfigFilePath()` — persist defaults written by `teams-notify configure`
+- [x] `Program.cs` — wire `--env-file` as a global option and thread it through to `ConfigService`
+- [x] `SendCommand` — implement all options: `--message`, `--file`, stdin, `--team`, `--channel`, `--subject`, `--html`, `--dry-run`, `--quiet`
+- [x] `ListCommand` — implement `--team` option; no argument lists all teams, with `--team` lists channels within it
+- [x] `ConfigureCommand` — implement interactive/option-based save of tenant, client ID/secret, and channel defaults
+- [x] Version command — output assembly version and target framework
+- [x] `TeamsNotify.Tests` — unit tests: arg parsing, config resolution order, exit code mapping, `--dry-run` output
 
 ### Phase 3 — Polish & Release
 
-- [ ] Review all `--help` text across every command for clarity and completeness. Do we provide man pages for linux/mac?
-- [ ] `Build.ps1` and `Build.sh` — automate self-contained publish for all five platform targets
-- [ ] Smoke test self-contained binaries on Windows, Linux, and macOS
-- [ ] Integration tests against a real Entra ID tenant and Teams environment
-- [ ] `TeamsNotify.Core` NuGet metadata review — description, tags, package README
-- [ ] Repository README — installation options, quick start, required Graph API permissions
+- [x] Review all `--help` text across every command for clarity and completeness. Do we provide man pages for linux/mac?
+- [x] `Build.ps1` and `Build.sh` — automate self-contained publish for all five platform targets
+- [x] Smoke test self-contained binaries on Windows, Linux, and macOS
+- [ ] Integration tests against a real Entra ID tenant and Teams environment *(blocked — waiting on tenant credentials from Glen)*
+- [x] `TeamsNotify.Core` NuGet metadata review — description, tags, package README
+- [x] Repository README — installation options, quick start, required Graph API permissions
 
 ## Distribution
 
@@ -381,6 +381,81 @@ When `--html` is passed, the message body is sent with `contentType: html`. Team
 </ul>
 <a href="https://ci.example.com/builds/42">View build #42</a>
 ```
+
+## Known Blocker — `ChannelMessage.Send` Does Not Exist as an Application Permission
+
+### Problem
+
+The original design assumes app-only (Client Credentials) authentication using the `ChannelMessage.Send` **Application permission** in Microsoft Graph. This design is fundamentally flawed.
+
+Per the [Microsoft Graph permissions reference](https://learn.microsoft.com/en-us/graph/permissions-reference), `ChannelMessage.Send` is a **Delegated permission only**:
+
+> *"Allows an app to send channel messages in Microsoft Teams, on behalf of the signed-in user."*
+
+There is no Application permission equivalent. Microsoft has never exposed app-only channel message sending as a standard tenant-wide Graph permission. The permission not appearing in the Azure portal during setup was not a gating or consent issue — it does not exist. The entire `ClientSecretCredential` auth path in `AuthService` and `GraphService` will fail at runtime for the send operation regardless of what permissions are granted.
+
+This is a **design-level v1 blocker**, not a configuration issue. The codebase must be updated before integration testing or shipping.
+
+### Proposed Solutions
+
+#### Option 1 — RSC (Resource-Specific Consent)
+
+Package the app as a Teams application and install it directly into each team it needs to post to. RSC provides a `ChannelMessage.Send.Group` permission scoped to that specific team, which does work app-only without a signed-in user. This is Microsoft's supported path for unattended app-only channel messaging.
+
+**What changes in the code:**
+- A Teams app manifest (`manifest.json`) must be created declaring the `ChannelMessage.Send.Group` RSC permission
+- The manifest must be packaged as a `.zip` and sideloaded or published to the organisation's Teams app catalogue
+- `AuthService` stays on Client Credentials — the auth mechanism does not change
+- `GraphService.SendMessageAsync()` may need to confirm RSC-granted permissions are honoured by the standard channel message endpoint — this requires verification during integration testing
+
+**Fallout:**
+- The app must be manually installed into every team it needs to post to — this is ongoing operational overhead
+- Sideloading requires IT/admin involvement for each team, which brings the Technical Services Committee into every new deployment
+- Teams app packages have their own versioning and update lifecycle separate from the CLI binary and NuGet package
+- Breaks the original "drop credentials in, point at any team" design goal — the app must already be installed in a team before it can post there
+- Not suitable as a truly general-purpose tool across an organisation without a centralised app catalogue deployment
+
+**Verdict:** The most viable path. Client Credentials auth is preserved, no licence cost, and it is Microsoft's documented supported approach for this scenario. The operational overhead is the main trade-off.
+
+#### Option 2 — Service Account (Delegated Permissions)
+
+Create a dedicated Microsoft 365 user account (e.g. `teams-notify@organisation.com`), grant it the Delegated `ChannelMessage.Send` permission, and authenticate as that user using the Resource Owner Password Credentials (ROPC) flow — the only non-interactive delegated flow suitable for unattended automation.
+
+A variation of this option is using an existing personal account rather than a dedicated service account. This avoids the licence cost but introduces its own problems — see fallout below.
+
+**What changes in the code:**
+- `AuthService` must be rewritten to use `UsernamePasswordCredential` from `Azure.Identity` instead of `ClientSecretCredential`
+- `TeamsCredentials` must be extended to carry a username and password instead of a client secret
+- All environment variable names and config file keys change — a breaking change for any consumer of `TeamsNotify.Core`
+- All documentation, README, CLI manual, and the NuGet package readme require updates
+
+**Fallout:**
+- A dedicated M365 user licence costs money annually — explicitly identified as undesirable
+- ROPC is deprecated by Microsoft and not recommended for new applications
+- Storing a username and password as credentials is a weaker security model than Client Credentials
+- MFA policies and password expiry on the service account can silently break unattended scripts with no warning
+- Messages appear to come from the named user account rather than a neutral app identity, which looks odd in Teams
+- Breaks the app-only design goal entirely
+
+**Using a personal account instead of a dedicated service account:**
+- Avoids the licence cost but every automated message appears in Teams as posted by that person personally
+- MFA is almost certainly enabled on personal accounts in a government-managed tenant — ROPC does not support MFA and will fail outright
+- The individual's password is stored in plaintext in env files and CI/CD secrets — a significant personal security risk
+- Any password change, account lock, or policy rotation by IT immediately breaks all automation silently
+- Government tenants typically enforce strict password rotation policies — this will fail on a predictable schedule
+- Ties organisational automation to a single person's account — if they leave, everything breaks
+
+**Verdict:** Not recommended in either form. Dedicated service account carries licence cost and deprecated auth. Personal account is worse — MFA incompatibility alone makes it non-viable on a government tenant, and it is poor security practice regardless.
+
+### Recommended Path
+
+1. Pursue RSC (Option 1) — it preserves the Client Credentials auth design and is Microsoft's supported approach
+2. Work with the Technical Services Committee to get the Teams app sideloaded into the test team while Glen is on leave, so integration testing can proceed when he returns
+3. Do not pursue Option 2
+
+The codebase auth logic (`AuthService`, `GraphService`) does not need to change for RSC — the work is in creating the Teams app manifest and coordinating the sideload with IT. All other v1 work is complete.
+
+Integration tests remain blocked until RSC is set up.
 
 ## Future Considerations
 

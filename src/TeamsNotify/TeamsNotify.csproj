@@ -13,13 +13,25 @@
     <ToolCommandName>teams-notify</ToolCommandName>
     <PackageId>TeamsNotify</PackageId>
     <Version>1.0.0</Version>
-    <Authors>TeamsNotify Contributors</Authors>
-    <Description>CLI tool for sending Microsoft Teams messages from scripts and CI/CD pipelines.</Description>
+    <Authors>EvilGeniusCore</Authors>
+    <Description>Cross-platform CLI tool for sending Microsoft Teams channel messages from scripts, CI/CD pipelines, and cron jobs. Runs on Linux, Windows, and macOS — no .NET runtime required when using self-contained binaries.</Description>
+    <PackageTags>teams;microsoft-teams;graph-api;notifications;messaging;cli;devops;ci-cd</PackageTags>
     <PackageLicenseExpression>LGPL-3.0-only</PackageLicenseExpression>
-    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <Copyright>Copyright (c) 2026 EvilGeniusCore</Copyright>
     <RepositoryUrl>https://github.com/Bonejob/teams-notify</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+      <_Parameter1>TeamsNotify.Tests</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
 
   <ItemGroup>
     <!-- Core library — brings Microsoft.Graph and Azure.Identity transitively -->

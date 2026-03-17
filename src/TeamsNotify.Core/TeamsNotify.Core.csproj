@@ -10,14 +10,19 @@
     <IsPackable>true</IsPackable>
     <PackageId>TeamsNotify.Core</PackageId>
     <Version>1.0.0</Version>
-    <Authors>TeamsNotify Contributors</Authors>
-    <Description>Core library for sending Microsoft Teams messages via the Graph API. Provides authentication, Graph API calls, and team/channel resolution for use in .NET applications.</Description>
-    <PackageTags>teams;microsoft-teams;graph-api;notifications;messaging</PackageTags>
+    <Authors>EvilGeniusCore</Authors>
+    <Description>Send Microsoft Teams channel messages from any .NET application via the Graph API. Handles authentication (Client Credentials), team/channel name resolution, and message formatting (plain text and HTML). No CLI dependency required.</Description>
+    <PackageTags>teams;microsoft-teams;graph-api;notifications;messaging;channel;bot;ci-cd</PackageTags>
     <PackageLicenseExpression>LGPL-3.0-only</PackageLicenseExpression>
-    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <PackageReadmeFile>NUGET_README.md</PackageReadmeFile>
     <Copyright>Copyright (c) 2026 EvilGeniusCore</Copyright>
     <RepositoryUrl>https://github.com/Bonejob/teams-notify</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="NUGET_README.md" Pack="true" PackagePath="" />
+  </ItemGroup>
 
   <ItemGroup>
     <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">

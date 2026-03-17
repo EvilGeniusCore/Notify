@@ -1,0 +1,161 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write   # required to create GitHub releases
+
+jobs:
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 1. Run all unit tests
+  # ─────────────────────────────────────────────────────────────────────────────
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.x'
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Test — Core
+        run: dotnet test tests/TeamsNotify.Core.Tests -c Release --no-restore
+
+      - name: Test — CLI
+        run: dotnet test tests/TeamsNotify.Tests -c Release --no-restore
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 2. Build self-contained binaries (all platforms, cross-compiled on Ubuntu)
+  #    Each artifact is a zip containing: binary + README + LICENSE + CLI manual
+  # ─────────────────────────────────────────────────────────────────────────────
+  build-binaries:
+    name: Build — ${{ matrix.rid }}
+    needs: test
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        rid:
+          - win-x64
+          - linux-x64
+          - linux-arm64
+          - osx-x64
+          - osx-arm64
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.x'
+
+      - name: Extract version
+        id: ver
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Publish
+        run: |
+          dotnet publish src/TeamsNotify/TeamsNotify.csproj \
+            -c Release \
+            -r ${{ matrix.rid }} \
+            --self-contained true \
+            -p:PublishSingleFile=true \
+            -p:Version=${{ steps.ver.outputs.version }} \
+            -o publish/${{ matrix.rid }}
+
+      - name: Package zip
+        run: |
+          STAGING="staging/teams-notify-${{ matrix.rid }}"
+          mkdir -p "$STAGING"
+
+          # Binary — teams-notify.exe on Windows, teams-notify elsewhere
+          cp publish/${{ matrix.rid }}/teams-notify* "$STAGING/"
+
+          # Docs bundled with the binary
+          cp README.md LICENSE "$STAGING/"
+          cp Documentation/teams-notify-cli-manual.md "$STAGING/"
+
+          mkdir -p dist
+          cd staging
+          zip -r "../dist/teams-notify-${{ matrix.rid }}.zip" "teams-notify-${{ matrix.rid }}/"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: binary-${{ matrix.rid }}
+          path: dist/teams-notify-${{ matrix.rid }}.zip
+          if-no-files-found: error
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 3. Build and publish TeamsNotify.Core to NuGet.org
+  #    Requires NUGET_API_KEY in repository secrets.
+  # ─────────────────────────────────────────────────────────────────────────────
+  publish-nuget:
+    name: Publish NuGet
+    needs: test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.x'
+
+      - name: Extract version
+        id: ver
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Pack TeamsNotify.Core
+        run: |
+          dotnet pack src/TeamsNotify.Core/TeamsNotify.Core.csproj \
+            -c Release \
+            -p:Version=${{ steps.ver.outputs.version }} \
+            -o nupkgs
+
+      - name: Push to NuGet.org
+        run: |
+          dotnet nuget push nupkgs/*.nupkg \
+            --api-key ${{ secrets.NUGET_API_KEY }} \
+            --source https://api.nuget.org/v3/index.json \
+            --skip-duplicate
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 4. Create GitHub release with all binary zips attached
+  #    Release notes auto-generated from commits since the previous tag.
+  # ─────────────────────────────────────────────────────────────────────────────
+  create-release:
+    name: Create Release
+    needs: [build-binaries, publish-nuget]
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download binary artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: binary-*
+          path: release-assets
+          merge-multiple: true
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            release-assets/* \
+            --title "teams-notify $GITHUB_REF_NAME" \
+            --generate-notes

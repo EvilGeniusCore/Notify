@@ -1,0 +1,37 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/teams/v1.16/MicrosoftTeams.schema.json",
+  "manifestVersion": "1.16",
+  "version": "1.0.0",
+  "id": "REPLACE-WITH-NEW-GUID",
+  "packageName": "com.evilgeniuscore.teams-notify",
+  "developer": {
+    "name": "EvilGeniusCore",
+    "websiteUrl": "https://github.com/Bonejob/teams-notify",
+    "privacyUrl": "https://github.com/Bonejob/teams-notify",
+    "termsOfUseUrl": "https://github.com/Bonejob/teams-notify"
+  },
+  "name": {
+    "short": "teams-notify",
+    "full": "teams-notify — Automated Channel Notifications"
+  },
+  "description": {
+    "short": "Send automated notifications to this team from scripts and pipelines.",
+    "full": "teams-notify is a cross-platform CLI tool and .NET library for sending automated Microsoft Teams channel messages from CI/CD pipelines, cron jobs, and scripts. Install this app in a team to grant it permission to post notifications to any channel in that team."
+  },
+  "icons": {
+    "color": "color.png",
+    "outline": "outline.png"
+  },
+  "accentColor": "#0078D4",
+  "authorization": {
+    "permissions": {
+      "resourceSpecific": [
+        {
+          "name": "ChannelMessage.Send.Group",
+          "type": "Application"
+        }
+      ]
+    }
+  },
+  "validDomains": []
+}

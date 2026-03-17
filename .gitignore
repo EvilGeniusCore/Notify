@@ -111,6 +111,13 @@ BenchmarkDotNet.Artifacts/
 .vscode/
 
 # =========================
+# Teams app package
+# =========================
+TeamsApp/teams-notify-app.zip
+TeamsApp/color.png
+TeamsApp/outline.png
+
+# =========================
 # Credentials / secrets
 # =========================
 *.env
