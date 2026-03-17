@@ -1,11 +1,11 @@
 # `teams-notify` — Planning Document
-> A C# / .NET 10 global CLI tool for sending Microsoft Teams notifications via the Graph API
+> A C# / .NET 10 CLI tool and reusable NuGet library for sending Microsoft Teams notifications via the Graph API
 
 ## Purpose
 
 This tool exists to send Teams messages to a specified channel or user so that scripts can be automated on servers in either Mac, Linux or Windows. It is NOT meant to replace built in integrations of platforms like Gitlab/Github or other platforms.
 
-The consumers of the application would be any Admin, .NET user, or developer who needs to send Teams messages in a secured environment. This is an open source project distributed as an installable package. Existing tools did not provide the cross-platform ease of use required.
+The consumers of the application would be any Admin, .NET user, or developer who needs to send Teams messages in a secured environment. This is an open source project distributed in two forms: a cross-platform CLI tool for scripts and pipelines, and a NuGet library (`TeamsNotify.Core`) for .NET applications that want to send Teams messages without shelling out to the CLI. Existing tools did not provide the cross-platform ease of use required, and no general-purpose Graph API wrapper for Teams messaging exists on NuGet.
 
 ## Problems With the Alternatives
 
@@ -147,16 +147,24 @@ All variables apply regardless of source — `--env-file`, environment, or confi
 
 ## Technical Stack
 
-### Core Libraries
+### `TeamsNotify.Core` — Library Dependencies
+
+| Role | Package | Notes |
+|---|---|---|
+| Graph API | `Microsoft.Graph` v5 | Strongly typed, handles paging + retry |
+| Azure Auth | `Azure.Identity` | Client Credentials via app registration |
+| Logging | `Microsoft.Extensions.Logging.Abstractions` | Abstractions only — consumers supply the implementation |
+| JSON | `System.Text.Json` | Already in the runtime |
+
+### `TeamsNotify` — CLI-Only Dependencies
 
 | Role | Package | Notes |
 |---|---|---|
 | CLI framework | `System.CommandLine` | Stable in .NET 10, first-class MS support |
-| Graph API | `Microsoft.Graph` v5 | Strongly typed, handles paging + retry |
-| Azure Auth | `Azure.Identity` | Client Credentials via app registration |
 | Configuration | `Microsoft.Extensions.Configuration` | + JSON + EnvVars providers |
-| Logging | `Microsoft.Extensions.Logging` | Wire to console, respect `--quiet` |
-| JSON | `System.Text.Json` | Already in the runtime |
+| Logging impl | `Microsoft.Extensions.Logging.Console` | Wires console output, respects `--quiet` |
+
+`Microsoft.Graph` and `Azure.Identity` are pulled in transitively from `TeamsNotify.Core` — the CLI does not reference them directly.
 
 ### .NET 10 Features Worth Using
 
@@ -169,36 +177,104 @@ All variables apply regardless of source — `--env-file`, environment, or confi
 
 ## Project Structure
 
+Two projects ship from this repository: a reusable NuGet library (`TeamsNotify.Core`) and the CLI tool (`TeamsNotify`) that wraps it.
+
 ```
 teams-notify/
 ├── src/
-│   └── TeamsNotify/
-│       ├── Program.cs              ← entry point, command wiring
+│   ├── TeamsNotify.Core/               ← NuGet library (TeamsNotify.Core)
+│   │   ├── Models/
+│   │   │   ├── TeamsCredentials.cs     ← record: TenantId, ClientId, ClientSecret
+│   │   │   └── SendMessageRequest.cs   ← record: TeamId, ChannelId, Body, IsHtml, Subject
+│   │   ├── Services/
+│   │   │   ├── AuthService.cs          ← builds GraphServiceClient from TeamsCredentials
+│   │   │   └── GraphService.cs         ← sends messages, lists teams/channels, resolves names
+│   │   └── TeamsNotify.Core.csproj     ← deps: Microsoft.Graph, Azure.Identity, Logging.Abstractions
+│   └── TeamsNotify/                    ← CLI tool (dotnet global tool + self-contained binaries)
+│       ├── Program.cs                  ← entry point, command wiring
 │       ├── Commands/
 │       │   ├── SendCommand.cs
 │       │   ├── ConfigureCommand.cs
 │       │   └── ListCommand.cs
-│       ├── Services/
-│       │   ├── GraphService.cs     ← Graph API calls
-│       │   ├── AuthService.cs      ← credential resolution
-│       │   └── ConfigService.cs    ← load/save config
 │       ├── Models/
-│       │   └── AppConfig.cs
-│       └── TeamsNotify.csproj
+│       │   └── AppConfig.cs            ← CLI config model; ToCredentials() extracts TeamsCredentials
+│       ├── Services/
+│       │   └── ConfigService.cs        ← loads credentials into AppConfig (--env-file / env / file)
+│       └── TeamsNotify.csproj          ← deps: System.CommandLine, Configuration, ProjectRef→Core
 ├── tests/
-│   └── TeamsNotify.Tests/
-│       └── ...
+│   ├── TeamsNotify.Core.Tests/         ← unit tests for Core library
+│   └── TeamsNotify.Tests/              ← unit tests for CLI (arg parsing, config resolution)
+├── Documentation/
+│   └── teams-notify-planning.md
+├── CLAUDE.md
 ├── README.md
-└── teams-notify.sln
+└── teams-notify.slnx
 ```
+
+### Separation of concerns
+
+| Layer | Project | Knows about |
+|---|---|---|
+| Graph / auth logic | `TeamsNotify.Core` | `Microsoft.Graph`, `Azure.Identity`, `TeamsCredentials`, `SendMessageRequest` |
+| Config loading | `TeamsNotify` (`ConfigService`) | env vars, files, platform paths → `AppConfig` → `TeamsCredentials` |
+| CLI surface | `TeamsNotify` (`Commands/*`) | `System.CommandLine`, `ConfigService`, Core services |
+
+`TeamsNotify.Core` has zero CLI dependencies and can be consumed directly by any .NET application via NuGet without shelling out to the CLI.
+
+## Build Plan
+
+Ordered by dependency — each phase can begin once the previous is complete.
+
+### Phase 1 — Core Library (`TeamsNotify.Core`)
+
+- [ ] `TeamsCredentials` — already a `record` with `required` properties; no runtime validation needed
+- [ ] `SendMessageRequest` — already a `record` with `required` properties; no runtime validation needed
+- [ ] `AuthService` — implement `BuildGraphClientAsync()` using `ClientSecretCredential` from `Azure.Identity`
+- [ ] `GraphService` — implement `SendMessageAsync(SendMessageRequest)` — channel message with plain text or HTML body and optional subject line
+- [ ] `GraphService` — implement `ResolveTeamIdAsync()` and `ResolveChannelIdAsync()` — GUID passthrough + name lookup via Graph
+- [ ] `GraphService` — implement `ListTeamsAsync()` and `ListChannelsAsync()`
+- [ ] `TeamsNotify.Core.Tests` — unit tests: GUID detection, name resolution input parsing
+
+### Phase 2 — CLI (`TeamsNotify`)
+
+- [ ] `AppConfig.Validate()` — assert required credential fields are non-null before calling `ToCredentials()`
+- [ ] `ConfigService.LoadAsync()` — resolve credentials from `--env-file` → env vars → config file → exit code `5`
+- [ ] `ConfigService.SaveAsync()` / `GetConfigFilePath()` — persist defaults written by `teams-notify configure`
+- [ ] `Program.cs` — wire `--env-file` as a global option and thread it through to `ConfigService`
+- [ ] `SendCommand` — implement all options: `--message`, `--file`, stdin, `--team`, `--channel`, `--subject`, `--html`, `--dry-run`, `--quiet`
+- [ ] `ListCommand` — implement `--team` option; no argument lists all teams, with `--team` lists channels within it
+- [ ] `ConfigureCommand` — implement interactive/option-based save of tenant, client ID/secret, and channel defaults
+- [ ] Version command — output assembly version and target framework
+- [ ] `TeamsNotify.Tests` — unit tests: arg parsing, config resolution order, exit code mapping, `--dry-run` output
+
+### Phase 3 — Polish & Release
+
+- [ ] Review all `--help` text across every command for clarity and completeness
+- [ ] `Build.ps1` and `Build.sh` — automate self-contained publish for all five platform targets
+- [ ] Smoke test self-contained binaries on Windows, Linux, and macOS
+- [ ] Integration tests against a real Entra ID tenant and Teams environment
+- [ ] `TeamsNotify.Core` NuGet metadata review — description, tags, package README
+- [ ] Repository README — installation options, quick start, required Graph API permissions
 
 ## Distribution
 
-The CI build produces a self-contained single file executable per platform — all .NET dependencies and DLLs bundled into the binary. No .NET runtime required on the target machine. Drop it anywhere and run it. Documentation will be in the repository and referred to in the help.
+Two artifacts are published from this repository.
 
-### Build targets
+### `TeamsNotify.Core` — NuGet Library
 
-All targets must be built with `PublishSingleFile=true` and `--self-contained true`.
+Published to NuGet.org as `TeamsNotify.Core`. Consumed by .NET applications that want to send Teams messages directly without the CLI:
+
+```bash
+dotnet add package TeamsNotify.Core
+```
+
+### `TeamsNotify` — CLI Tool
+
+Distributed in two forms:
+
+**Self-contained binaries** — all .NET dependencies bundled into a single executable. No .NET runtime required on the target machine. Drop it anywhere and run it.
+
+All targets built with `PublishSingleFile=true` and `--self-contained true`:
 
 - `win-x64` — `teams-notify.exe`
 - `linux-x64` — `teams-notify`
@@ -208,9 +284,7 @@ All targets must be built with `PublishSingleFile=true` and `--self-contained tr
 
 Build scripts (PowerShell and Bash) will be provided to automate publishing across all targets.
 
-### As a .NET Global Tool (optional)
-
-For users who already have the .NET runtime and prefer a smaller install:
+**dotnet global tool** — for users who already have the .NET runtime and prefer a smaller install:
 
 ```bash
 dotnet tool install -g teams-notify
@@ -235,19 +309,26 @@ The `Microsoft.Graph` SDK has built-in retry handling for 429 and 503 responses,
 
 ## Testing Strategy
 
-Unit tests and integration tests are kept separate with a clear boundary between them.
+Unit tests and integration tests are kept separate with a clear boundary between them. Two test projects map to the two source projects.
 
-### Unit tests
+### `TeamsNotify.Core.Tests` — Library unit tests
 
-Test logic that does not require a network or credentials:
+Test Core logic that does not require a network or credentials:
+
+- GUID detection for `--team` and `--channel` resolution
+- Name-to-ID resolution logic (input parsing, error cases)
+- `AppConfig` validation (missing required fields)
+
+No mocking of the Graph client. If a piece of logic requires mocking the Graph client to test it, that is a signal the logic should be separated from the API call.
+
+### `TeamsNotify.Tests` — CLI unit tests
+
+Test CLI behaviour that does not require a network or credentials:
 
 - Command argument parsing and validation (required fields, mutual exclusivity of `--message` / `--file` / stdin)
 - Config resolution order (`--env-file` → env vars → config file → error)
-- GUID detection for `--team` and `--channel` resolution
 - Exit code mapping for each error condition
 - `--dry-run` output formatting
-
-No mocking of the Graph client. If a piece of logic requires mocking the Graph client to test it, that is a signal the logic should be separated from the API call.
 
 ### Integration tests
 
@@ -300,3 +381,19 @@ When `--html` is passed, the message body is sent with `contentType: html`. Team
 </ul>
 <a href="https://ci.example.com/builds/42">View build #42</a>
 ```
+
+## Future Considerations
+
+Items that are explicitly out of scope for v1 but worth revisiting in later versions.
+
+### Adaptive Cards — `Microsoft.Teams.Cards`
+
+The official Microsoft package [`Microsoft.Teams.Cards`](https://www.nuget.org/packages/Microsoft.Teams.Cards) (Dec 2025, .NET 8+) builds Adaptive Card payloads for Teams, including Teams-specific card elements. It does not send — it is a payload builder only.
+
+When the `--card` flag is implemented, this package should be evaluated as the card payload builder rather than rolling custom DTOs. It is actively maintained by Microsoft and targets .NET 8+, making it compatible with this project.
+
+### File Payloads
+
+Sending file attachments to a Teams channel or chat via the Graph API. The Graph API supports this but it is a multi-step operation: upload the file to SharePoint/OneDrive first, then attach the resulting share link or file ID to the message. This is non-trivial and has no current use case driving it, but it is a natural extension of the `send` command — e.g. `--attach report.pdf`.
+
+This is currently listed as out of scope. Revisit when a concrete use case exists.

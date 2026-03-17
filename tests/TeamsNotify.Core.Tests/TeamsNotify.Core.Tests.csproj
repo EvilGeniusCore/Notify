@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\TeamsNotify\TeamsNotify.csproj" />
+    <ProjectReference Include="..\..\src\TeamsNotify.Core\TeamsNotify.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>

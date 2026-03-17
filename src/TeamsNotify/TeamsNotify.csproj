@@ -7,24 +7,35 @@
     <Nullable>enable</Nullable>
     <AssemblyName>teams-notify</AssemblyName>
     <RootNamespace>TeamsNotify</RootNamespace>
+
+    <!-- Global tool packaging -->
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>teams-notify</ToolCommandName>
+    <PackageId>TeamsNotify</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>TeamsNotify Contributors</Authors>
+    <Description>CLI tool for sending Microsoft Teams messages from scripts and CI/CD pipelines.</Description>
+    <PackageLicenseExpression>LGPL-3.0-only</PackageLicenseExpression>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <Copyright>Copyright (c) 2026 EvilGeniusCore</Copyright>
+    <RepositoryUrl>https://github.com/Bonejob/teams-notify</RepositoryUrl>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Core library — brings Microsoft.Graph and Azure.Identity transitively -->
+    <ProjectReference Include="..\TeamsNotify.Core\TeamsNotify.Core.csproj" />
+  </ItemGroup>
 
   <ItemGroup>
     <!-- CLI framework -->
     <PackageReference Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
 
-    <!-- Graph API -->
-    <PackageReference Include="Microsoft.Graph" Version="5.*" />
-
-    <!-- Azure authentication -->
-    <PackageReference Include="Azure.Identity" Version="1.*" />
-
-    <!-- Configuration -->
+    <!-- Configuration — CLI is responsible for loading credentials into AppConfig -->
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.*" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.*" />
     <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.*" />
 
-    <!-- Logging -->
+    <!-- Logging — CLI wires up the console implementation -->
     <PackageReference Include="Microsoft.Extensions.Logging" Version="10.*" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.*" />
   </ItemGroup>
