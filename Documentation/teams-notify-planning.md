@@ -249,7 +249,7 @@ Ordered by dependency — each phase can begin once the previous is complete.
 
 ### Phase 3 — Polish & Release
 
-- [ ] Review all `--help` text across every command for clarity and completeness
+- [ ] Review all `--help` text across every command for clarity and completeness. Do we provide man pages for linux/mac?
 - [ ] `Build.ps1` and `Build.sh` — automate self-contained publish for all five platform targets
 - [ ] Smoke test self-contained binaries on Windows, Linux, and macOS
 - [ ] Integration tests against a real Entra ID tenant and Teams environment
