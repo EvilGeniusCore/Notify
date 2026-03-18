@@ -73,4 +73,4 @@ Each test reports pass or fail. If a test fails the script stops and prints the 
 | `4` | Graph API error — the app may not have the required permissions, or the Teams app may not be installed in the target team |
 | `5` | Config missing — a required value is blank in `test.env` |
 
-If `list` passes but `send` returns exit code `4`, the most likely cause is that the `teams-notify` app has not been installed in the target team via Teams Admin Center. See the main `TeamsApp/README.md` for installation steps.
+If `list` passes but `send` returns exit code `4`, the most likely cause is that the `teams-notify` Teams app has not been installed in the target team. Installing the app requires the **team owner** role — being a team member or having created a channel is not sufficient. If you are not the team owner, ask your team owner to install `teams-notify` from the "Added by your org" section in the team's Apps tab. See `TeamsApp/README.md` for the full installation steps.

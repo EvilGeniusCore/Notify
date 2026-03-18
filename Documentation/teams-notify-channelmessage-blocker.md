@@ -177,9 +177,12 @@ A nightly backup script on a Linux server posts the result to a `#backups` chann
 
 Instead of waiting for each team owner to self-install, a Teams admin can configure an app setup policy that automatically deploys `teams-notify` to every team in the org. This means the app is already present in every team with no action required from team owners. This is a larger ask of IT but reduces per-team friction to zero. Both models are valid — self-service from catalogue for orgs that prefer opt-in, policy deployment for orgs that want it everywhere from day one.
 
-**Team owner does when they want notifications — self-service, no IT ticket:**
-1. Open their team → Apps → search "teams-notify" under "Added by your org"
-2. Click install — RSC consent (`ChannelMessage.Send.Group`) is granted automatically at that moment for that team
+**Team owner installs the app — self-service, no IT ticket:**
+
+Installing a Teams app requires the **team owner** role. Being a team member, or having created a channel within the team, does not grant this permission. If the person who wants notifications is not a team owner they need to ask their team owner to complete this step.
+
+1. Team owner opens their team → Apps → searches "teams-notify" under "Added by your org"
+2. Clicks install — RSC consent (`ChannelMessage.Send.Group`) is granted automatically at that moment for that team
 3. The bot posts a welcome message to General with the team ID
 
 **Person configuring the sender:**
