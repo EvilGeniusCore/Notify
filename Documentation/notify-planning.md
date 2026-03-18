@@ -215,7 +215,7 @@ notify/
 │   └── Notify.Tests/                   ← unit tests for CLI (arg parsing, config resolution)
 ├── Documentation/
 │   ├── notify-planning.md
-│   └── notify-teams-channelmessage-blocker.md
+│   └── Providers/teams/notify-teams-channelmessage-blocker.md
 ├── CLAUDE.md
 ├── README.md
 └── notify.slnx
@@ -269,7 +269,7 @@ Ordered by dependency — each phase can begin once the previous is complete.
 
 ### Phase 4 — RSC Teams App & Org Catalogue Deployment
 
-Implements the chosen solution documented in [notify-teams-channelmessage-blocker.md](notify-teams-channelmessage-blocker.md). The code changes are minimal — the auth path is unchanged. The bulk of this phase is the Teams app package and the one-time IT setup.
+Implements the chosen solution documented in [Providers/teams/notify-teams-channelmessage-blocker.md](Providers/teams/notify-teams-channelmessage-blocker.md). The code changes are minimal — the auth path is unchanged. The bulk of this phase is the Teams app package and the one-time IT setup.
 
 #### New project — `TeamsApp/`
 
@@ -445,7 +445,7 @@ When `--html` is passed, the message body is sent with `contentType: html`. Team
 
 Four options have been evaluated (RSC, Service Account, Bot Framework, Webhook) with full fallout analysis. The recommended path is webhook support first, RSC in parallel, ship with both modes. Integration tests remain blocked until RSC is set up with the Technical Services Committee.
 
-See [notify-teams-channelmessage-blocker.md](notify-teams-channelmessage-blocker.md) for the full analysis.
+See [Providers/teams/notify-teams-channelmessage-blocker.md](Providers/teams/notify-teams-channelmessage-blocker.md) for the full analysis.
 
 ## Future Considerations
 
