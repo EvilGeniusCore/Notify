@@ -123,6 +123,7 @@ TeamsApp/outline.png
 *.env
 .env
 teams.env
+TestKit/test.env
 
 # =========================
 # OS

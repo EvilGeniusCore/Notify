@@ -290,6 +290,15 @@ These are tasks for the person with Teams Administrator and Entra ID Global Admi
 - [ ] Upload `teams-notify-app.zip` to Teams Admin Center → Manage apps → Upload custom app
 - [ ] Confirm org app permission policy allows team owners to install org apps
 
+#### Test kit — `TestKit/`
+
+A self-contained folder the technical group can use to verify the setup in their own environment. Includes a README with platform-specific binary download instructions, a credentials template, and test scripts for both PowerShell and Bash.
+
+- [x] `TestKit/README.md` — binary download steps per platform, credential setup, how to run, troubleshooting
+- [x] `TestKit/test.env.template` — all five env var keys with comments pointing to where each value is found in the Azure portal
+- [x] `TestKit/Test-TeamsNotify.ps1` — Windows PowerShell: list, dry-run send, real send
+- [x] `TestKit/test-teams-notify.sh` — Linux/macOS Bash: list, dry-run send, real send
+
 #### Bot welcome message *(v2 — out of scope for v1)*
 
 Posting the team ID to General automatically on app installation would improve the setup experience. This requires a hosted HTTPS bot endpoint that Teams can call when the `installationUpdate` activity fires — a hosted service separate from the CLI binary. Out of scope for v1. The v1 workaround is to run `teams-notify list` after installation to find team and channel IDs.
