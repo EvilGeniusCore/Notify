@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build.sh — publish teams-notify for one or more target profiles
+# Build.sh — publish notify for one or more target profiles
 # Run from the solution root (Teams-Notify/).
 #
 # Usage:
@@ -10,7 +10,7 @@
 set -euo pipefail
 
 SOLUTION_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/"
-PROJECT_PATH="src/TeamsNotify/TeamsNotify.csproj"
+PROJECT_PATH="src/Notify/Notify.csproj"
 
 DEFAULT_PROFILES=(
     "win-x64"

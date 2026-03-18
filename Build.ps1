@@ -1,4 +1,4 @@
-# Build.ps1 — publish teams-notify for one or more target profiles
+# Build.ps1 — publish notify for one or more target profiles
 # Run from the solution root (Teams-Notify/).
 #
 # Usage:
@@ -12,7 +12,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $SolutionDir = (Resolve-Path .).Path.TrimEnd('\') + "\"
-$ProjectPath = "src/TeamsNotify/TeamsNotify.csproj"
+$ProjectPath = "src/Notify/Notify.csproj"
 
 $DefaultProfiles = @(
     "win-x64",

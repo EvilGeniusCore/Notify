@@ -1,62 +1,62 @@
-# teams-notify
+# notify
 
 A .NET 10 CLI tool for sending Microsoft Teams messages via the Graph API — designed for CI/CD pipelines, cron jobs, and scripts. Runs on Linux, Windows, and macOS with no .NET runtime required.
 
 ## Install
 
-**Self-contained binary** — download for your platform from the [releases page](https://github.com/Bonejob/teams-notify/releases) and place it on your PATH. No .NET runtime needed.
+**Self-contained binary** — download for your platform from the [releases page](https://github.com/EvilGeniusCore/Notify/releases) and place it on your PATH. No .NET runtime needed.
 
 **dotnet global tool** — for machines that already have .NET installed:
 
 ```bash
-dotnet tool install -g TeamsNotify
+dotnet tool install -g Notify
 ```
 
 **NuGet library** — for .NET applications that want to send Teams messages without shelling out to the CLI:
 
 ```bash
-dotnet add package TeamsNotify.Core
+dotnet add package Notify.Teams
 ```
 
 ## Quick start
 
 ```bash
 # Set credentials once
-export TEAMS_NOTIFY_TENANT_ID=your-tenant-id
-export TEAMS_NOTIFY_CLIENT_ID=your-client-id
-export TEAMS_NOTIFY_CLIENT_SECRET=your-client-secret
+export NOTIFY_TEAMS_TENANT_ID=your-tenant-id
+export NOTIFY_TEAMS_CLIENT_ID=your-client-id
+export NOTIFY_TEAMS_CLIENT_SECRET=your-client-secret
 
 # Send a message
-teams-notify send --team DevOps --channel Alerts --message "Deployment complete"
+notify send --team DevOps --channel Alerts --message "Deployment complete"
 ```
 
 ## Usage
 
 ```bash
 # Send a plain text message
-teams-notify send --team DevOps --channel Alerts --message "Deployment complete"
+notify send --team DevOps --channel Alerts --message "Deployment complete"
 
 # Send with a subject line
-teams-notify send --team DevOps --channel Alerts --subject "Build #42 Failed" --message "Unit tests failed on main"
+notify send --team DevOps --channel Alerts --subject "Build #42 Failed" --message "Unit tests failed on main"
 
 # Send an HTML formatted message
-teams-notify send --team DevOps --channel Alerts --html --message "<b>Failed</b> — branch <code>main</code>"
+notify send --team DevOps --channel Alerts --html --message "<b>Failed</b> — branch <code>main</code>"
 
 # Send message body from a file
-teams-notify send --team DevOps --channel Alerts --file ./message.html --html
+notify send --team DevOps --channel Alerts --file ./message.html --html
 
 # Pipe stdin
-echo "Build failed" | teams-notify send --team DevOps --channel Alerts
+echo "Build failed" | notify send --team DevOps --channel Alerts
 
 # Use a credentials file (useful for cron jobs)
-teams-notify send --env-file ./teams.env --team DevOps --channel Alerts --message "Done"
+notify send --env-file ./teams.env --team DevOps --channel Alerts --message "Done"
 
 # Dry run — prints the resolved request without sending
-teams-notify send --team DevOps --channel Alerts --message "test" --dry-run
+notify send --team DevOps --channel Alerts --message "test" --dry-run
 
 # Discover available teams and channels
-teams-notify list
-teams-notify list --team DevOps
+notify list
+notify list --team DevOps
 ```
 
 ## Configuration
@@ -65,16 +65,16 @@ Credentials are resolved in this order (highest priority first):
 
 1. `--env-file <path>` — key=value file, overrides everything
 2. Environment variables — set in the shell, crontab, or container
-3. Config file — written by `teams-notify configure`, stored in the platform-appropriate location
+3. Config file — written by `notify configure`, stored in the platform-appropriate location
 
 ### Environment variables
 
 ```
-TEAMS_NOTIFY_TENANT_ID=<your-tenant-id>
-TEAMS_NOTIFY_CLIENT_ID=<your-client-id>
-TEAMS_NOTIFY_CLIENT_SECRET=<your-client-secret>
-TEAMS_NOTIFY_DEFAULT_TEAM=DevOps
-TEAMS_NOTIFY_DEFAULT_CHANNEL=Alerts
+NOTIFY_TEAMS_TENANT_ID=<your-tenant-id>
+NOTIFY_TEAMS_CLIENT_ID=<your-client-id>
+NOTIFY_TEAMS_CLIENT_SECRET=<your-client-secret>
+NOTIFY_TEAMS_DEFAULT_TEAM=DevOps
+NOTIFY_TEAMS_DEFAULT_CHANNEL=Alerts
 ```
 
 ### Typical patterns
@@ -83,7 +83,7 @@ TEAMS_NOTIFY_DEFAULT_CHANNEL=Alerts
 |---|---|
 | CI/CD pipeline or container | Set environment variables in the platform |
 | Cron job or script folder | `--env-file ./teams.env` alongside your script |
-| Developer laptop | Run `teams-notify configure` once |
+| Developer laptop | Run `notify configure` once |
 
 ### Entra ID setup
 
@@ -108,8 +108,8 @@ TEAMS_NOTIFY_DEFAULT_CHANNEL=Alerts
 ```
 -m, --message <text>      Message body — required unless --file or stdin is used
 -f, --file <path>         Read message body from a file
--t, --team <name|id>      Target team (overrides TEAMS_NOTIFY_DEFAULT_TEAM)
--c, --channel <name|id>   Target channel (overrides TEAMS_NOTIFY_DEFAULT_CHANNEL)
+-t, --team <name|id>      Target team (overrides NOTIFY_TEAMS_DEFAULT_TEAM)
+-c, --channel <name|id>   Target channel (overrides NOTIFY_TEAMS_DEFAULT_CHANNEL)
     --subject <text>      Optional subject line shown above the message body
     --html                Treat message body as HTML (Teams HTML subset)
     --dry-run             Print the resolved request without sending
@@ -119,7 +119,7 @@ Global:
     --env-file <path>     Load credentials from a key=value file
 ```
 
-`--team` and `--channel` accept either a name or a GUID. Names require a Graph API lookup — use `teams-notify list` to find IDs for production scripts where stability matters.
+`--team` and `--channel` accept either a name or a GUID. Names require a Graph API lookup — use `notify list` to find IDs for production scripts where stability matters.
 
 ## HTML support
 
@@ -140,19 +140,19 @@ Pass `--html` to send formatted content. Teams renders a subset of HTML:
 
 Headings, images, and tables are not supported and will be stripped by Teams.
 
-## Using TeamsNotify.Core in your .NET app
+## Using Notify.Teams in your .NET app
 
 If you want to send Teams messages directly from a .NET application without the CLI:
 
 ```csharp
-using TeamsNotify.Core.Models;
-using TeamsNotify.Core.Services;
+using Notify.Teams.Models;
+using Notify.Teams.Services;
 
 var credentials = new TeamsCredentials
 {
-    TenantId     = Environment.GetEnvironmentVariable("TEAMS_NOTIFY_TENANT_ID")!,
-    ClientId     = Environment.GetEnvironmentVariable("TEAMS_NOTIFY_CLIENT_ID")!,
-    ClientSecret = Environment.GetEnvironmentVariable("TEAMS_NOTIFY_CLIENT_SECRET")!,
+    TenantId     = Environment.GetEnvironmentVariable("NOTIFY_TEAMS_TENANT_ID")!,
+    ClientId     = Environment.GetEnvironmentVariable("NOTIFY_TEAMS_CLIENT_ID")!,
+    ClientSecret = Environment.GetEnvironmentVariable("NOTIFY_TEAMS_CLIENT_SECRET")!,
 };
 
 var auth    = new AuthService(credentials);
@@ -170,7 +170,7 @@ await graph.SendMessageAsync(new SendMessageRequest
 });
 ```
 
-See the [TeamsNotify.Core library guide](Documentation/TeamsNotify.Core-Library-Guide.md) for full API documentation.
+See the [Notify.Teams library guide](Documentation/Notify.Teams-Library-Guide.md) for full API documentation.
 
 ## Exit codes
 

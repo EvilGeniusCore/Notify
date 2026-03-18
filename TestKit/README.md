@@ -1,25 +1,25 @@
-# teams-notify — Test Kit
+# notify — Test Kit
 
-Use this folder to verify that `teams-notify` is correctly configured and able to send messages to your Teams channel after completing the Admin Center setup.
+Use this folder to verify that `notify` is correctly configured and able to send messages to your Teams channel after completing the Admin Center setup.
 
 ## Step 1 — Get the binary for your platform
 
-Go to the [releases page](https://github.com/Bonejob/teams-notify/releases) and download the zip for your platform:
+Go to the [releases page](https://github.com/EvilGeniusCore/Notify/releases) and download the zip for your platform:
 
 | Platform | Zip file | Binary inside |
 |---|---|---|
-| Windows 64-bit | `teams-notify-win-x64.zip` | `teams-notify.exe` |
-| Linux 64-bit | `teams-notify-linux-x64.zip` | `teams-notify` |
-| Linux ARM 64-bit | `teams-notify-linux-arm64.zip` | `teams-notify` |
-| macOS Intel | `teams-notify-osx-x64.zip` | `teams-notify` |
-| macOS Apple Silicon | `teams-notify-osx-arm64.zip` | `teams-notify` |
+| Windows 64-bit | `notify-win-x64.zip` | `notify.exe` |
+| Linux 64-bit | `notify-linux-x64.zip` | `notify` |
+| Linux ARM 64-bit | `notify-linux-arm64.zip` | `notify` |
+| macOS Intel | `notify-osx-x64.zip` | `notify` |
+| macOS Apple Silicon | `notify-osx-arm64.zip` | `notify` |
 
 Extract the binary from the zip and place it in this `TestKit/` folder alongside the test scripts.
 
 On Linux or macOS, mark the binary as executable after extracting:
 
 ```bash
-chmod +x teams-notify
+chmod +x notify
 ```
 
 ## Step 2 — Configure credentials
@@ -43,13 +43,13 @@ Open `test.env` and fill in the values. All five fields are required. See the co
 **Windows (PowerShell):**
 
 ```powershell
-.\Test-TeamsNotify.ps1
+.\Test-Notify.ps1
 ```
 
 **Linux / macOS (Bash):**
 
 ```bash
-./test-teams-notify.sh
+./test-notify.sh
 ```
 
 ## What the tests do
@@ -69,8 +69,8 @@ Each test reports pass or fail. If a test fails the script stops and prints the 
 | Exit code | Meaning |
 |---|---|
 | `2` | Auth failed — check tenant ID, client ID, and client secret in `test.env` |
-| `3` | Team or channel not found — check the names match exactly, or use IDs from `teams-notify list` |
+| `3` | Team or channel not found — check the names match exactly, or use IDs from `notify list` |
 | `4` | Graph API error — the app may not have the required permissions, or the Teams app may not be installed in the target team |
 | `5` | Config missing — a required value is blank in `test.env` |
 
-If `list` passes but `send` returns exit code `4`, the most likely cause is that the `teams-notify` Teams app has not been installed in the target team. Installing the app requires the **team owner** role — being a team member or having created a channel is not sufficient. If you are not the team owner, ask your team owner to install `teams-notify` from the "Added by your org" section in the team's Apps tab. See `TeamsApp/README.md` for the full installation steps.
+If `list` passes but `send` returns exit code `4`, the most likely cause is that the `notify` Teams app has not been installed in the target team. Installing the app requires the **team owner** role — being a team member or having created a channel is not sufficient. If you are not the team owner, ask your team owner to install `notify` from the "Added by your org" section in the team's Apps tab. See `TeamsApp/README.md` for the full installation steps.

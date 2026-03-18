@@ -1,12 +1,12 @@
-# teams-notify — Teams App Package
+# notify — Teams App Package
 
-This folder contains the Microsoft Teams app manifest used to grant RSC (Resource-Specific Consent) permission for `teams-notify` to post messages to channels in a team.
+This folder contains the Microsoft Teams app manifest used to grant RSC (Resource-Specific Consent) permission for `notify` to post messages to channels in a team.
 
 ## Why this is needed
 
 `ChannelMessage.Send` does not exist as a tenant-wide Application permission in Microsoft Graph. It is delegated-only. The supported path for unattended app-only sending is RSC, which scopes the permission to a specific team via a Teams app installation.
 
-Once installed in a team, `teams-notify` can post to **any channel** in that team.
+Once installed in a team, `notify` can post to **any channel** in that team.
 
 ## Before you package
 
@@ -48,12 +48,12 @@ Run the packaging script from this folder:
 .\Package-TeamsApp.ps1
 ```
 
-This produces `teams-notify-app.zip` ready for sideloading.
+This produces `notify-app.zip` ready for sideloading.
 
 Or package manually:
 
 ```powershell
-Compress-Archive -Path manifest.json, color.png, outline.png -DestinationPath teams-notify-app.zip -Force
+Compress-Archive -Path manifest.json, color.png, outline.png -DestinationPath notify-app.zip -Force
 ```
 
 ## Installing in a team
@@ -61,10 +61,10 @@ Compress-Archive -Path manifest.json, color.png, outline.png -DestinationPath te
 1. In Microsoft Teams, go to the target team
 2. Click **Manage team** (⚙) → **Apps** tab
 3. Click **Upload an app** → **Upload a custom app**
-4. Select `teams-notify-app.zip`
+4. Select `notify-app.zip`
 5. Click **Add** to grant the RSC permission and install the app
 
-Repeat for each team that needs to receive notifications. The app must be installed in a team before `teams-notify send` can post to any channel in that team.
+Repeat for each team that needs to receive notifications. The app must be installed in a team before `notify send` can post to any channel in that team.
 
 ## Updating the app
 

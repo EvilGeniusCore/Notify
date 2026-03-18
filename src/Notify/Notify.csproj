@@ -1,0 +1,57 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>notify</AssemblyName>
+    <RootNamespace>Notify</RootNamespace>
+
+    <!-- Global tool packaging -->
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>notify</ToolCommandName>
+    <PackageId>Notify</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>EvilGeniusCore</Authors>
+    <Description>Cross-platform CLI tool for sending notifications to Microsoft Teams channels from scripts, CI/CD pipelines, and cron jobs. Runs on Linux, Windows, and macOS — no .NET runtime required when using self-contained binaries.</Description>
+    <PackageTags>notify;teams;microsoft-teams;graph-api;notifications;messaging;cli;devops;ci-cd</PackageTags>
+    <PackageLicenseExpression>LGPL-3.0-only</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <Copyright>Copyright (c) 2026 EvilGeniusCore</Copyright>
+    <RepositoryUrl>https://github.com/EvilGeniusCore/Notify</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+      <_Parameter1>Notify.Tests</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Core abstractions -->
+    <ProjectReference Include="..\Notify.Core\Notify.Core.csproj" />
+    <!-- Teams provider — brings Microsoft.Graph and Azure.Identity transitively -->
+    <ProjectReference Include="..\Notify.Teams\Notify.Teams.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- CLI framework -->
+    <PackageReference Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
+
+    <!-- Configuration — CLI is responsible for loading credentials into AppConfig -->
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.*" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.*" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.*" />
+
+    <!-- Logging — CLI wires up the console implementation -->
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="10.*" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.*" />
+  </ItemGroup>
+
+</Project>

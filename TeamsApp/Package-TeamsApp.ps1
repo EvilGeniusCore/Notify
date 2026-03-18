@@ -4,7 +4,7 @@
     Packages the Teams app manifest and icons into a zip ready for sideloading.
 
 .DESCRIPTION
-    Validates that required files are present then produces teams-notify-app.zip
+    Validates that required files are present then produces notify-app.zip
     in the TeamsApp folder. The zip is what you upload to Teams via
     Manage team > Apps > Upload a custom app.
 
@@ -19,7 +19,7 @@ $root     = $PSScriptRoot
 $manifest = Join-Path $root 'manifest.json'
 $color    = Join-Path $root 'color.png'
 $outline  = Join-Path $root 'outline.png'
-$output   = Join-Path $root 'teams-notify-app.zip'
+$output   = Join-Path $root 'notify-app.zip'
 
 # ── Validate prerequisites ────────────────────────────────────────────────────
 
@@ -53,5 +53,5 @@ Write-Host "OK: $output" -ForegroundColor Green
 Write-Host "    App ID:   $($json.id)"
 Write-Host "    Version:  $($json.version)"
 Write-Host ""
-Write-Host "Upload teams-notify-app.zip to each team via:"
+Write-Host "Upload notify-app.zip to each team via:"
 Write-Host "  Manage team (⚙) > Apps > Upload an app > Upload a custom app"

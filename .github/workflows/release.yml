@@ -28,11 +28,11 @@ jobs:
       - name: Restore
         run: dotnet restore
 
-      - name: Test — Core
-        run: dotnet test tests/TeamsNotify.Core.Tests -c Release --no-restore
+      - name: Test — Teams
+        run: dotnet test tests/Notify.Teams.Tests -c Release --no-restore
 
       - name: Test — CLI
-        run: dotnet test tests/TeamsNotify.Tests -c Release --no-restore
+        run: dotnet test tests/Notify.Tests -c Release --no-restore
 
   # ─────────────────────────────────────────────────────────────────────────────
   # 2. Build self-contained binaries (all platforms, cross-compiled on Ubuntu)
@@ -66,7 +66,7 @@ jobs:
 
       - name: Publish
         run: |
-          dotnet publish src/TeamsNotify/TeamsNotify.csproj \
+          dotnet publish src/Notify/Notify.csproj \
             -c Release \
             -r ${{ matrix.rid }} \
             --self-contained true \
@@ -76,29 +76,29 @@ jobs:
 
       - name: Package zip
         run: |
-          STAGING="staging/teams-notify-${{ matrix.rid }}"
+          STAGING="staging/notify-${{ matrix.rid }}"
           mkdir -p "$STAGING"
 
-          # Binary — teams-notify.exe on Windows, teams-notify elsewhere
-          cp publish/${{ matrix.rid }}/teams-notify* "$STAGING/"
+          # Binary — notify.exe on Windows, notify elsewhere
+          cp publish/${{ matrix.rid }}/notify* "$STAGING/"
 
           # Docs bundled with the binary
           cp README.md LICENSE "$STAGING/"
-          cp Documentation/teams-notify-cli-manual.md "$STAGING/"
+          cp Documentation/notify-cli-manual.md "$STAGING/"
 
           mkdir -p dist
           cd staging
-          zip -r "../dist/teams-notify-${{ matrix.rid }}.zip" "teams-notify-${{ matrix.rid }}/"
+          zip -r "../dist/notify-${{ matrix.rid }}.zip" "notify-${{ matrix.rid }}/"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: binary-${{ matrix.rid }}
-          path: dist/teams-notify-${{ matrix.rid }}.zip
+          path: dist/notify-${{ matrix.rid }}.zip
           if-no-files-found: error
 
   # ─────────────────────────────────────────────────────────────────────────────
-  # 3. Build and publish TeamsNotify.Core to NuGet.org
+  # 3. Build and publish Notify.Teams and Notify.Core to NuGet.org
   #    Requires NUGET_API_KEY in repository secrets.
   # ─────────────────────────────────────────────────────────────────────────────
   publish-nuget:
@@ -118,9 +118,16 @@ jobs:
         id: ver
         run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
 
-      - name: Pack TeamsNotify.Core
+      - name: Pack Notify.Teams
         run: |
-          dotnet pack src/TeamsNotify.Core/TeamsNotify.Core.csproj \
+          dotnet pack src/Notify.Teams/Notify.Teams.csproj \
+            -c Release \
+            -p:Version=${{ steps.ver.outputs.version }} \
+            -o nupkgs
+
+      - name: Pack Notify.Core
+        run: |
+          dotnet pack src/Notify.Core/Notify.Core.csproj \
             -c Release \
             -p:Version=${{ steps.ver.outputs.version }} \
             -o nupkgs
@@ -157,5 +164,5 @@ jobs:
         run: |
           gh release create "$GITHUB_REF_NAME" \
             release-assets/* \
-            --title "teams-notify $GITHUB_REF_NAME" \
+            --title "notify $GITHUB_REF_NAME" \
             --generate-notes

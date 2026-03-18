@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Notify.Core/Notify.Core.csproj" />
+    <Project Path="src/Notify.Teams/Notify.Teams.csproj" />
+    <Project Path="src/Notify/Notify.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Notify.Teams.Tests/Notify.Teams.Tests.csproj" />
+    <Project Path="tests/Notify.Tests/Notify.Tests.csproj" />
+  </Folder>
+</Solution>

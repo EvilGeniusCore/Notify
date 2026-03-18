@@ -3,20 +3,20 @@
   "manifestVersion": "1.16",
   "version": "1.0.0",
   "id": "REPLACE-WITH-NEW-GUID",
-  "packageName": "com.evilgeniuscore.teams-notify",
+  "packageName": "com.evilgeniuscore.notify.teams",
   "developer": {
     "name": "EvilGeniusCore",
-    "websiteUrl": "https://github.com/Bonejob/teams-notify",
-    "privacyUrl": "https://github.com/Bonejob/teams-notify",
-    "termsOfUseUrl": "https://github.com/Bonejob/teams-notify"
+    "websiteUrl": "https://github.com/EvilGeniusCore/Notify",
+    "privacyUrl": "https://github.com/EvilGeniusCore/Notify",
+    "termsOfUseUrl": "https://github.com/EvilGeniusCore/Notify"
   },
   "name": {
-    "short": "teams-notify",
-    "full": "teams-notify — Automated Channel Notifications"
+    "short": "notify",
+    "full": "notify — Automated Channel Notifications"
   },
   "description": {
     "short": "Send automated notifications to this team from scripts and pipelines.",
-    "full": "teams-notify is a cross-platform CLI tool and .NET library for sending automated Microsoft Teams channel messages from CI/CD pipelines, cron jobs, and scripts. Install this app in a team to grant it permission to post notifications to any channel in that team."
+    "full": "notify is a cross-platform CLI tool and .NET library for sending automated Microsoft Teams channel messages from CI/CD pipelines, cron jobs, and scripts. Install this app in a team to grant it permission to post notifications to any channel in that team."
   },
   "icons": {
     "color": "color.png",
