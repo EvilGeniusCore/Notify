@@ -149,3 +149,66 @@ Given the industry research, the recommended path is:
 4. Do not pursue Option 2 (Service Account) or Option 3 (Bot Framework)
 
 Integration tests for the Graph API path remain blocked until RSC is set up with the Technical Services Committee. Webhook integration tests can proceed immediately.
+
+## Chosen Solution — RSC via Org App Catalogue
+
+### What we are building
+
+Option 1 (RSC) deployed through the organisation's Teams app catalogue — the **"Added by your org"** section in Microsoft Teams. The app is uploaded once to Teams Admin Center by someone with the Teams Administrator role. After that, any team owner can install it in their team themselves from the catalogue, without raising an IT ticket.
+
+Once installed in a team, `teams-notify` can post to any **standard channel** in that team using the existing Client Credentials auth path — no changes to `AuthService` or the credential model.
+
+**Note on private channels:** RSC is granted at the team level and covers standard channels only. Private channels are a separate security boundary and are not accessible regardless of RSC consent. If someone needs a dedicated notification channel visible only to certain people, a standard channel with a descriptive name (e.g. `#backups`) is the right approach — private channel support is not something `teams-notify` can provide without a separate permission model.
+
+**Note on direct messages:** `ChatMessage.Send` — the permission for sending DMs to individuals — is also delegated-only, the same blocker as `ChannelMessage.Send`. Direct messages to individuals are not supported. For personal notifications, create a dedicated standard channel in the relevant team. The `--to` flag is out of scope for v1.
+
+### Intended use case
+
+A nightly backup script on a Linux server posts the result to a `#backups` channel in the team. Every morning the team can see at a glance what succeeded and what failed without logging into any server. This is the canonical use case — an unattended script running on a schedule, posting a plain-text or simple HTML notification to a shared team channel.
+
+### The deployment flow
+
+**IT does once, ever:**
+1. Create the Entra ID App Registration with `Team.ReadBasic.All` and `Channel.ReadBasic.All` application permissions and grant admin consent
+2. Upload `teams-notify-app.zip` to Teams Admin Center → Manage apps → Upload custom app
+3. Ensure the org app permission policy allows team owners to install org apps (most orgs leave this open by default)
+
+**Optional — IT deploys org-wide via app setup policy:**
+
+Instead of waiting for each team owner to self-install, a Teams admin can configure an app setup policy that automatically deploys `teams-notify` to every team in the org. This means the app is already present in every team with no action required from team owners. This is a larger ask of IT but reduces per-team friction to zero. Both models are valid — self-service from catalogue for orgs that prefer opt-in, policy deployment for orgs that want it everywhere from day one.
+
+**Team owner does when they want notifications — self-service, no IT ticket:**
+1. Open their team → Apps → search "teams-notify" under "Added by your org"
+2. Click install — RSC consent (`ChannelMessage.Send.Group`) is granted automatically at that moment for that team
+3. The bot posts a welcome message to General with the team ID
+
+**Person configuring the sender:**
+1. Run `teams-notify list` to see teams and channel IDs
+2. Add the team ID and channel name to config or the send command — done
+
+### Why we chose this over the alternatives
+
+**Why not Webhook (Option 4)?**
+
+The webhook path (Power Automate workflow HTTP trigger) is what every major CI/CD platform has landed on because it requires zero Entra ID setup. We evaluated it seriously and rejected it for this project for three reasons:
+
+- **One URL per channel.** Every channel that needs notifications requires its own Power Automate workflow and its own URL managed as a secret. A single App Registration covers every team and channel the app has access to — the credential set never grows as more channels are added.
+- **No discovery.** The `list` command and name-to-ID resolution are explicit design goals of `teams-notify`. Neither can be built on webhooks — the target is encoded in the URL and there is no API to enumerate teams or channels.
+- **Power Automate licence dependency.** The HTTP trigger for Teams notifications may require a premium Power Automate licence depending on the organisation's M365 plan. This introduces an external cost and approval process that is outside our control and varies per organisation. RSC has no ongoing cost beyond the App Registration that is already required.
+
+The webhook is a valid fallback for organisations that cannot or will not do the one-time Admin Center setup, and we may implement `--webhook <url>` as a secondary mode in a future version. It is not the primary path.
+
+**Why not Service Account (Option 2) or Bot Framework (Option 3)?**
+
+Service Account requires purchasing an M365 licence, uses a deprecated auth flow (ROPC), and is incompatible with MFA — which rules it out entirely on a government-managed tenant. Bot Framework requires an additional Azure resource, two auth paths in the codebase, and the same per-team installation overhead as RSC but with more complexity. Neither option offers anything RSC does not, at higher cost and friction.
+
+**Why RSC via org catalogue and not RSC via direct sideloading?**
+
+Sideloading requires IT to upload the app directly into each target team. Every new team is a new IT ticket. The org catalogue changes this completely — IT uploads once to Admin Center and team owners self-install from that point on. The ongoing operational overhead drops to zero after the initial setup.
+
+### Caveats
+
+- **Teams Administrator role required** for the one-time Admin Center upload. This is the only IT touchpoint that cannot be self-served.
+- **Org app permission policy** must allow team owners to install org apps. This is the default in most tenants but can be locked down by the Teams admin. Worth confirming before expecting self-service installation to work.
+- **Standard channels only.** Private channels are not accessible via RSC.
+- **Integration tests remain blocked** until the App Registration and Admin Center deployment are in place. The auth path is implemented; it cannot be validated until RSC is live.
