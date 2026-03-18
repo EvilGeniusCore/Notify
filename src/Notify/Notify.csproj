@@ -37,7 +37,7 @@
     <!-- Core abstractions -->
     <ProjectReference Include="..\Notify.Core\Notify.Core.csproj" />
     <!-- Teams provider — brings Microsoft.Graph and Azure.Identity transitively -->
-    <ProjectReference Include="..\Notify.Teams\Notify.Teams.csproj" />
+    <ProjectReference Include="..\Providers\Notify.Teams\Notify.Teams.csproj" />
   </ItemGroup>
 
   <ItemGroup>

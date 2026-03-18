@@ -1,7 +1,7 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/Notify.Core/Notify.Core.csproj" />
-    <Project Path="src/Notify.Teams/Notify.Teams.csproj" />
+    <Project Path="src/Providers/Notify.Teams/Notify.Teams.csproj" />
     <Project Path="src/Notify/Notify.csproj" />
   </Folder>
   <Folder Name="/tests/">
