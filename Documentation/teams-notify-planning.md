@@ -253,9 +253,46 @@ Ordered by dependency — each phase can begin once the previous is complete.
 - [x] Review all `--help` text across every command for clarity and completeness. Do we provide man pages for linux/mac?
 - [x] `Build.ps1` and `Build.sh` — automate self-contained publish for all five platform targets
 - [x] Smoke test self-contained binaries on Windows, Linux, and macOS
-- [ ] Integration tests against a real Entra ID tenant and Teams environment *(blocked — waiting on tenant credentials from Glen)*
+- [ ] Integration tests against a real Entra ID tenant and Teams environment *(blocked — waiting on RSC setup, see Phase 4)*
 - [x] `TeamsNotify.Core` NuGet metadata review — description, tags, package README
 - [x] Repository README — installation options, quick start, required Graph API permissions
+
+### Phase 4 — RSC Teams App & Org Catalogue Deployment
+
+Implements the chosen solution documented in [teams-notify-channelmessage-blocker.md](teams-notify-channelmessage-blocker.md). The code changes are minimal — the auth path is unchanged. The bulk of this phase is the Teams app package and the one-time IT setup.
+
+#### New project — `TeamsApp/`
+
+The `TeamsApp/` folder is a standalone Teams app package, not a .NET project. It ships as a `.zip` uploaded to Teams Admin Center. The scaffold already exists; the remaining tasks are:
+
+- [x] `manifest.json` — RSC manifest declaring `ChannelMessage.Send.Group` for the team scope
+- [x] `Package-TeamsApp.ps1` — packaging script that validates inputs and produces `teams-notify-app.zip`
+- [x] `TeamsApp/README.md` — setup and sideloading instructions
+- [ ] `color.png` — 192×192 px full colour app icon (must be provided before packaging)
+- [ ] `outline.png` — 32×32 px white/transparent outline icon (must be provided before packaging)
+- [ ] Replace `REPLACE-WITH-NEW-GUID` placeholder in `manifest.json` with a real GUID (`New-Guid` in PowerShell). Must be stable across all future versions — do not regenerate.
+
+#### Code changes
+
+No changes to `AuthService` or the credential model — Client Credentials via `ClientSecretCredential` is unchanged. The RSC grant happens at the Teams app installation level, not in the code.
+
+- [ ] Verify `GraphService.SendMessageAsync()` works end-to-end with RSC-granted permissions *(integration test — requires Phase 4 IT setup to be complete)*
+- [ ] Verify `GraphService.ListTeamsAsync()` and `GraphService.ListChannelsAsync()` work with `Team.ReadBasic.All` and `Channel.ReadBasic.All` *(integration test)*
+- [ ] Update `README.md` Entra ID setup section to reference RSC deployment via org catalogue rather than direct `ChannelMessage.Send` permission grant
+- [ ] Update `Documentation/teams-notify-cli-manual.md` Entra ID setup section to match
+
+#### IT setup tasks *(one-time, not automated)*
+
+These are tasks for the person with Teams Administrator and Entra ID Global Admin access. They are not automated by any script in this repository.
+
+- [ ] Create Entra ID App Registration and grant admin consent for `Team.ReadBasic.All` and `Channel.ReadBasic.All` application permissions
+- [ ] Run `Package-TeamsApp.ps1` to produce `teams-notify-app.zip`
+- [ ] Upload `teams-notify-app.zip` to Teams Admin Center → Manage apps → Upload custom app
+- [ ] Confirm org app permission policy allows team owners to install org apps
+
+#### Bot welcome message *(v2 — out of scope for v1)*
+
+Posting the team ID to General automatically on app installation would improve the setup experience. This requires a hosted HTTPS bot endpoint that Teams can call when the `installationUpdate` activity fires — a hosted service separate from the CLI binary. Out of scope for v1. The v1 workaround is to run `teams-notify list` after installation to find team and channel IDs.
 
 ## Distribution
 
