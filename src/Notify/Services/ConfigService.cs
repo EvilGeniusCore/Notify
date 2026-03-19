@@ -64,10 +64,14 @@ public class ConfigService
         // Layer 2 — environment variables
         ApplySource(config, key => Environment.GetEnvironmentVariable(key));
 
-        // Layer 3 — --env-file (highest priority)
-        if (envFilePath is not null)
+        // Layer 3 — env file (highest priority)
+        // Explicit --env-file takes precedence; fall back to .env in the current directory.
+        var resolvedEnvFile = envFilePath
+            ?? (File.Exists(".env") ? ".env" : null);
+
+        if (resolvedEnvFile is not null)
         {
-            var envFileValues = await ParseEnvFileAsync(envFilePath);
+            var envFileValues = await ParseEnvFileAsync(resolvedEnvFile);
             ApplySource(config, key => envFileValues.GetValueOrDefault(key));
         }
 
