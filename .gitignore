@@ -113,7 +113,8 @@ BenchmarkDotNet.Artifacts/
 # =========================
 # Teams app package
 # =========================
-TeamsApp/teams-notify-app.zip
+TeamsApp/manifest.json
+TeamsApp/notify-app.zip
 TeamsApp/color.png
 TeamsApp/outline.png
 

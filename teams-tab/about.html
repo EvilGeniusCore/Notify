@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Notify</title>
+  <script src="https://res.cdn.office.net/teams-js/2.22.0/js/MicrosoftTeams.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #fff;
+      color: #242424;
+      padding: 32px;
+      max-width: 640px;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+
+    h1 {
+      font-size: 22px;
+      font-weight: 600;
+    }
+
+    .meta {
+      font-size: 13px;
+      color: #616161;
+      margin-top: 3px;
+    }
+
+    .team-name {
+      color: #0078d4;
+      font-weight: 600;
+    }
+
+    section {
+      margin-bottom: 28px;
+    }
+
+    h2 {
+      font-size: 12px;
+      font-weight: 600;
+      color: #616161;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 10px;
+    }
+
+    p {
+      font-size: 14px;
+      line-height: 1.6;
+      color: #424242;
+    }
+
+    .permission {
+      background: #f5f5f5;
+      border-radius: 6px;
+      padding: 12px 16px;
+    }
+
+    .permission .value {
+      font-size: 13px;
+      font-family: "Cascadia Code", "Consolas", monospace;
+      color: #0078d4;
+    }
+
+    .permission .desc {
+      font-size: 13px;
+      color: #616161;
+      margin-top: 3px;
+    }
+
+    .links {
+      display: flex;
+      gap: 16px;
+    }
+
+    .links a {
+      font-size: 14px;
+      color: #0078d4;
+      text-decoration: none;
+    }
+
+    .links a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <h1>notify</h1>
+      <div class="meta">
+        v1.0.0 &mdash; EvilGenius &mdash;
+        Installed in: <span class="team-name" id="team-name">this team</span>
+      </div>
+    </div>
+  </div>
+
+  <section>
+    <h2>What this app does</h2>
+    <p>
+      Notify posts automated messages to this team's channels from CI/CD pipelines,
+      cron jobs, and scripts. It does not read messages, access files, or interact
+      with team members.
+    </p>
+  </section>
+
+  <section>
+    <h2>Permission granted</h2>
+    <div class="permission">
+      <div class="value">ChannelMessage.Send.Group</div>
+      <div class="desc">Post messages to any channel in this team</div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Links</h2>
+    <div class="links">
+      <a href="https://github.com/EvilGeniusCore/Notify" target="_blank">GitHub</a>
+      <a href="https://github.com/EvilGeniusCore/Notify/blob/master/Documentation/notify-cli-manual.md" target="_blank">Documentation</a>
+      <a href="https://github.com/EvilGeniusCore/Notify/issues" target="_blank">Support</a>
+    </div>
+  </section>
+
+  <script>
+    microsoftTeams.app.initialize().then(() => {
+      microsoftTeams.app.getContext().then((context) => {
+        if (context?.team?.displayName) {
+          document.getElementById("team-name").textContent = context.team.displayName;
+        }
+      });
+    });
+  </script>
+</body>
+</html>

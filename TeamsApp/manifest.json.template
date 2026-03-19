@@ -24,7 +24,7 @@
   },
   "accentColor": "#0078D4",
   "webApplicationInfo": {
-    "id": "69864768-9647-47a5-ae2c-9ff4c373dece",
+    "id": "REPLACE-WITH-APP-REGISTRATION-CLIENT-ID",
     "resource": "https://RscBasedStoreApp"
   },
   "authorization": {

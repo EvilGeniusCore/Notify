@@ -16,9 +16,10 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $root     = $PSScriptRoot
+$images   = Join-Path $root '..\Images'
 $manifest = Join-Path $root 'manifest.json'
-$color    = Join-Path $root 'color.png'
-$outline  = Join-Path $root 'outline.png'
+$color    = Join-Path $images 'Notify-192x192.png'
+$outline  = Join-Path $images 'Notify- black - 32x32.png'
 $output   = Join-Path $root 'notify-app.zip'
 
 # ── Validate prerequisites ────────────────────────────────────────────────────
@@ -28,11 +29,11 @@ if (-not (Test-Path $manifest)) {
 }
 
 if (-not (Test-Path $color)) {
-    Write-Error "color.png not found — add a 192×192 px PNG icon before packaging."
+    Write-Error "color icon not found: $color"
 }
 
 if (-not (Test-Path $outline)) {
-    Write-Error "outline.png not found — add a 32×32 px PNG outline icon before packaging."
+    Write-Error "outline icon not found: $outline"
 }
 
 # Check the manifest ID has been set
@@ -41,17 +42,40 @@ if ($json.id -eq 'REPLACE-WITH-NEW-GUID') {
     Write-Error "manifest.json still has the placeholder app ID. Run 'New-Guid' and update the 'id' field before packaging."
 }
 
-# ── Package ───────────────────────────────────────────────────────────────────
-
-if (Test-Path $output) {
-    Remove-Item $output -Force
+# Check the App Registration client ID has been set
+if ($json.webApplicationInfo.id -eq 'REPLACE-WITH-APP-REGISTRATION-CLIENT-ID') {
+    Write-Error "manifest.json still has the placeholder App Registration client ID. Update 'webApplicationInfo.id' with your Entra ID App Registration's Application (client) ID before packaging."
 }
 
-Compress-Archive -Path $manifest, $color, $outline -DestinationPath $output -CompressionLevel Optimal
+# ── Stage icons with Teams-required filenames ─────────────────────────────────
+
+$colorStaged   = Join-Path $root 'color.png'
+$outlineStaged = Join-Path $root 'outline.png'
+
+try {
+    Copy-Item $color   $colorStaged   -Force
+    Copy-Item $outline $outlineStaged -Force
+
+    # ── Package ───────────────────────────────────────────────────────────────
+
+    if (Test-Path $output) {
+        Remove-Item $output -Force
+    }
+
+    Compress-Archive -Path $manifest, $colorStaged, $outlineStaged -DestinationPath $output -CompressionLevel Optimal
+}
+finally {
+    # Clean up staged copies regardless of success or failure
+    if (Test-Path $colorStaged)   { Remove-Item $colorStaged   -Force }
+    if (Test-Path $outlineStaged) { Remove-Item $outlineStaged -Force }
+}
 
 Write-Host "OK: $output" -ForegroundColor Green
 Write-Host "    App ID:   $($json.id)"
 Write-Host "    Version:  $($json.version)"
 Write-Host ""
-Write-Host "Upload notify-app.zip to each team via:"
+Write-Host "Upload notify-app.zip to Teams Admin Center:"
+Write-Host "  Manage apps > Upload an app > Upload a custom app"
+Write-Host ""
+Write-Host "Or install directly into a team (sideloading):"
 Write-Host "  Manage team (⚙) > Apps > Upload an app > Upload a custom app"

@@ -18,6 +18,7 @@
     <PackageTags>notify;teams;microsoft-teams;graph-api;notifications;messaging;cli;devops;ci-cd</PackageTags>
     <PackageLicenseExpression>LGPL-3.0-only</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <ApplicationIcon>..\..\Images\Notify-192x192.ico</ApplicationIcon>
     <Copyright>Copyright (c) 2026 EvilGeniusCore</Copyright>
     <RepositoryUrl>https://github.com/EvilGeniusCore/Notify</RepositoryUrl>
     <RepositoryType>git</RepositoryType>

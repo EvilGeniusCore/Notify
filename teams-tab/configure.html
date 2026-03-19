@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Notify — Add to Team</title>
+  <script src="https://res.cdn.office.net/teams-js/2.22.0/js/MicrosoftTeams.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #fff;
+      color: #242424;
+      padding: 32px;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .header img {
+      width: 48px;
+      height: 48px;
+      border-radius: 8px;
+    }
+
+    h1 {
+      font-size: 20px;
+      font-weight: 600;
+    }
+
+    .version {
+      font-size: 13px;
+      color: #616161;
+      margin-top: 2px;
+    }
+
+    p {
+      font-size: 14px;
+      line-height: 1.6;
+      color: #424242;
+      margin-bottom: 16px;
+    }
+
+    .permission {
+      background: #f5f5f5;
+      border-radius: 6px;
+      padding: 12px 16px;
+      margin-bottom: 24px;
+    }
+
+    .permission .label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #616161;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 6px;
+    }
+
+    .permission .value {
+      font-size: 13px;
+      font-family: "Cascadia Code", "Consolas", monospace;
+      color: #0078d4;
+    }
+
+    .permission .desc {
+      font-size: 13px;
+      color: #616161;
+      margin-top: 2px;
+    }
+
+    .note {
+      font-size: 13px;
+      color: #616161;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <h1>notify</h1>
+      <div class="version">v1.0.0 &mdash; EvilGenius</div>
+    </div>
+  </div>
+
+  <p>
+    Notify posts automated messages to this team's channels from CI/CD pipelines,
+    cron jobs, and scripts. It does not read messages, access files, or interact
+    with team members.
+  </p>
+
+  <div class="permission">
+    <div class="label">Permission requested</div>
+    <div class="value">ChannelMessage.Send.Group</div>
+    <div class="desc">Post messages to any channel in this team</div>
+  </div>
+
+  <p class="note">
+    Click <strong>Save</strong> to install Notify in this team and grant the above permission.
+    No further configuration is required &mdash; Notify is managed by your admin.
+  </p>
+
+  <script>
+    microsoftTeams.app.initialize().then(() => {
+      microsoftTeams.pages.config.setValidityState(true);
+      microsoftTeams.pages.config.registerOnSaveHandler((saveEvent) => {
+        microsoftTeams.pages.config.setConfig({
+          suggestedDisplayName: "Notify",
+          contentUrl: "https://evilgeniuscore.github.io/Notify/about.html"
+        });
+        saveEvent.notifySuccess();
+      });
+    });
+  </script>
+</body>
+</html>

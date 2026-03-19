@@ -41,6 +41,8 @@ Place `notify.exe` in a folder that is on your `PATH`, or add its folder to your
 
 ## Setting Up an Entra ID App Registration
 
+`ChannelMessage.Send` does not exist as an Application permission in Microsoft Graph — it is delegated only. Sending messages app-only requires a Teams app installed in each team via RSC (Resource-Specific Consent). The App Registration here covers reading teams and channels only; the RSC permission for sending is granted when the Teams app is installed. See [Teams App Setup](#teams-app-setup) below.
+
 1. Go to [portal.azure.com](https://portal.azure.com) and sign in with your organisation account
 2. Search for **App registrations** in the top search bar and click **New registration**
 3. Give the app a name (e.g. `notify`), leave all other defaults, click **Register**
@@ -48,10 +50,23 @@ Place `notify.exe` in a folder that is on your `PATH`, or add its folder to your
    - **Application (client) ID** → your `NOTIFY_TEAMS_CLIENT_ID`
    - **Directory (tenant) ID** → your `NOTIFY_TEAMS_TENANT_ID`
 5. Go to **Certificates & secrets** → **New client secret** → set an expiry → click **Add**. Copy the **Value** immediately — it is only shown once → your `NOTIFY_TEAMS_CLIENT_SECRET`
-6. Go to **API permissions** → **Add a permission** → **Microsoft Graph** → **Application permissions** → search for `ChannelMessage.Send` → add it
+6. Go to **API permissions** → **Add a permission** → **Microsoft Graph** → **Application permissions** → add both:
+   - `Team.ReadBasic.All` — allows `notify list` to enumerate teams and resolve team names to IDs
+   - `Channel.ReadBasic.All` — allows `notify list` to enumerate channels and resolve channel names to IDs
 7. Click **Grant admin consent for [your organisation]** — a Global Admin must complete this step
 
-> **Note:** `ChannelMessage.Send` is a protected API. On some Microsoft 365 tenants it may require requesting access at `aka.ms/teamsgraph/requestaccess` before it appears in the Application permissions list. E3/E5 tenants typically have access once a Global Admin has granted consent.
+## Teams App Setup
+
+Sending messages requires the `notify` Teams app to be installed in each target team. This grants the RSC permission `ChannelMessage.Send.Group` scoped to that team, which is the only supported path for app-only channel messaging.
+
+See [TeamsApp/README.md](../TeamsApp/README.md) for the full packaging and installation steps. The short version:
+
+1. Clone the repo and fill in `TeamsApp/manifest.json` with your App Registration client ID
+2. Run `TeamsApp/Package-TeamsApp.ps1` to produce `notify-app.zip`
+3. In Teams, go to the target team → **Manage team** → **Apps** → **Upload an app** → select `notify-app.zip`
+4. Repeat for each team that needs to receive notifications
+
+The `notify list` command works as soon as the App Registration is configured. The `notify send` command requires the Teams app to be installed in the target team.
 
 ## Configuration
 
@@ -387,7 +402,7 @@ fi
 - A 429 response means the Graph API is throttling — the SDK retries automatically but if retries are exhausted the command fails. Wait and retry.
 - A 5xx response is a transient Graph API error — retry after a short delay
 
-**`ChannelMessage.Send` not visible in API permissions**
-- Your tenant may require requesting access to this protected API at `aka.ms/teamsgraph/requestaccess`
-- On E3/E5 tenants, a Global Admin granting consent is usually sufficient
-- Check that you selected **Application permissions** (not Delegated) when adding the permission
+**`error: graph api error` when sending but `list` works** (exit code 4)
+- The `notify` Teams app is likely not installed in the target team — this is the most common cause
+- Install it via **Manage team → Apps → Upload an app** and select `notify-app.zip`
+- Only a team owner can install apps — being a member or channel creator is not sufficient
