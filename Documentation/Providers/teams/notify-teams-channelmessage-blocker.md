@@ -215,3 +215,45 @@ Sideloading requires IT to upload the app directly into each target team. Every 
 - **Org app permission policy** must allow team owners to install org apps. This is the default in most tenants but can be locked down by the Teams admin. Worth confirming before expecting self-service installation to work.
 - **Standard channels only.** Private channels are not accessible via RSC.
 - **Integration tests remain blocked** until the App Registration and Admin Center deployment are in place. The auth path is implemented; it cannot be validated until RSC is live.
+
+## Active Blocker — `ChannelMessage.Send.Group` RSC Permission is Broken (March 2026)
+
+**Status: Confirmed Microsoft bug. Escalation in progress.**
+
+With the Teams app package built, uploaded to the org catalogue, installed in a test team (Notify-Test), and all Entra ID permissions granted and consented, `notify send` fails with:
+
+```
+error: graph api error - Missing role permissions on the request.
+API requires one of 'Teamwork.Migrate.All'.
+Roles on the request 'Channel.ReadBasic.All, Team.ReadBasic.All, Group.Selected'.
+```
+
+`Group.Selected` in the token confirms RSC is being presented correctly. The issue is not with our configuration — it is a bug in the Graph API endpoint.
+
+**Bug report:** [MicrosoftDocs/msteams-docs #14043 — ChannelMessage.Send.Group doesn't work](https://github.com/MicrosoftDocs/msteams-docs/issues/14043)
+
+Opened January 2026. Microsoft response on 17 February 2026 (Prasad-MSFT):
+
+> "A bug has been raised for this issue. After engineering team's confirmation, we will update the documentation wherever applicable."
+
+**Root cause:** The Graph API endpoint `POST /teams/{team-id}/channels/{channel-id}/messages` does not honour the RSC application permission `ChannelMessage.Send.Group` for regular app-only message sends. It only accepts `Teamwork.Migrate.All` (a migration-only permission). The permission is documented as supported but is not implemented.
+
+**`notify list` works correctly** — `Team.ReadBasic.All` and `Channel.ReadBasic.All` are functioning as expected. Only the send path is blocked.
+
+**What is confirmed working:**
+- Entra ID App Registration — correct
+- Teams app manifest — correct
+- RSC permission declaration (`ChannelMessage.Send.Group`) — correct
+- App installation in org catalogue and team — correct
+- Auth and Graph API connectivity — correct (`notify list` returns teams)
+- Token contains `Group.Selected` — correct
+
+**What is broken:** Microsoft's implementation of `ChannelMessage.Send.Group` on the send endpoint.
+
+**Escalation:** Escalation to Microsoft has been requested (March 2026). Bug is tracked at the link above.
+
+**Unblocking options while waiting for the fix:**
+
+1. **Wait** — the bug is acknowledged and on Microsoft's engineering backlog. No code changes needed when it is fixed.
+2. **Webhook fallback** — implement `--webhook <url>` (Power Automate HTTP trigger) as a secondary send path. Unblocks immediate use at the cost of per-channel URL management. See Option 4 above.
+3. **Bot Framework** — full bot implementation. Significant complexity. See Option 3 above.
