@@ -73,4 +73,8 @@ Each test reports pass or fail. If a test fails the script stops and prints the 
 | `4` | Graph API error — the app may not have the required permissions, or the Teams app may not be installed in the target team |
 | `5` | Config missing — a required value is blank in `test.env` |
 
-If `list` passes but `send` returns exit code `4`, the most likely cause is that the `notify` Teams app has not been installed in the target team. Installing the app requires the **team owner** role — being a team member or having created a channel is not sufficient. If you are not the team owner, ask your team owner to install `notify` from the "Added by your org" section in the team's Apps tab. See `TeamsApp/README.md` for the full installation steps.
+If `list` passes but `send` returns exit code `4`, there are two possible causes:
+
+**Known Microsoft bug (March 2026):** The `ChannelMessage.Send.Group` RSC permission is not currently honoured by the Graph API send endpoint. This is a confirmed Microsoft issue — see [MicrosoftDocs/msteams-docs #14043](https://github.com/MicrosoftDocs/msteams-docs/issues/14043). If this bug is still unresolved, `send` will fail even with correct configuration.
+
+**Teams app not installed:** If the bug has been resolved, verify the `notify` Teams app is installed in the target team. Installing the app requires the **team owner** role. If you are not the team owner, ask your team owner to install `notify` from the "Added by your org" section in the team's Apps tab. See `TeamsApp/README.md` for full steps.

@@ -104,18 +104,19 @@ Run these against a team where the app has been installed:
 
 ```powershell
 # Confirm auth and permissions are working
-notify list --env-file .\teams.env
+notify list --env-file .\notify.env
 
 # Confirm the target team and channel resolve
-notify send --env-file .\teams.env --team "your-team" --channel "your-channel" --message "notify setup verified" --dry-run
+notify send --env-file .\notify.env --team "your-team" --channel "your-channel" --message "notify setup verified" --dry-run
 
 # Send a real message
-notify send --env-file .\teams.env --team "your-team" --channel "your-channel" --message "notify setup verified"
+notify send --env-file .\notify.env --team "your-team" --channel "your-channel" --message "notify setup verified"
 ```
 
 `list` succeeds → App Registration and tenant permissions are correct.
+`dry-run` succeeds → Team and channel names resolve correctly.
 `send` succeeds → RSC is in place and the Teams app is installed.
-`send` fails with exit code `4` after `list` succeeds → Teams app is not installed in the target team.
+`send` fails with exit code `4` after `list` succeeds → Either the Teams app is not installed in the target team, or the Microsoft RSC bug is still unresolved — see [known issue](../../Documentation/Providers/teams/notify-teams-channelmessage-blocker.md#active-blocker--channelmessagesendgroup-rsc-permission-is-broken-march-2026).
 
 ## Credentials handoff
 

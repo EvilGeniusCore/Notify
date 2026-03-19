@@ -36,7 +36,9 @@ await graph.SendMessageAsync(new SendMessageRequest
 
 ## Authentication
 
-Requires an Entra ID App Registration with the `ChannelMessage.Send` application permission (admin consent required). Supply the tenant ID, client ID, and client secret from the registration.
+Requires an Entra ID App Registration with `Team.ReadBasic.All` and `Channel.ReadBasic.All` application permissions (admin consent required), plus the `notify` Teams app installed in each target team to grant the `ChannelMessage.Send.Group` RSC permission for app-only sending. Supply the tenant ID, client ID, and client secret from the registration.
+
+See the [full setup guide](https://github.com/EvilGeniusCore/Notify/blob/master/TeamsApp/Documentation/admin-setup-guide.md) for step-by-step instructions.
 
 ## HTML messages
 

@@ -7,10 +7,18 @@
 
 ## Requirements
 
-- An Entra ID App Registration with:
-  - `ChannelMessage.Send` application permission (admin consented)
-  - A client secret
+- An Entra ID App Registration with `Team.ReadBasic.All` and `Channel.ReadBasic.All` application permissions (admin consented) and a client secret
+- The `notify` Teams app installed in each team you want to post to — this grants the RSC permission that allows app-only channel messaging
 - One-time configuration of credentials (env vars, env file, or `notify configure`)
+
+## Known Issue — `notify send` Currently Blocked (March 2026)
+
+`notify list` works correctly. `notify send` fails with a Graph API permission error due to a confirmed Microsoft bug in the `ChannelMessage.Send.Group` RSC permission implementation. The permission is documented as supported but is not currently honoured by the Graph API send endpoint.
+
+Bug report: [MicrosoftDocs/msteams-docs #14043](https://github.com/MicrosoftDocs/msteams-docs/issues/14043)
+Microsoft acknowledged: 17 February 2026. Escalation in progress.
+
+No changes to your configuration are needed — everything is set up correctly. The fix is on Microsoft's engineering backlog.
 
 See [Setting Up an Entra ID App Registration](#setting-up-an-entra-id-app-registration) below.
 
@@ -92,7 +100,7 @@ NOTIFY_TEAMS_DEFAULT_CHANNEL Default channel name or GUID (optional)
 An env file is a plain text file with one `KEY=VALUE` per line. Lines starting with `#` are ignored.
 
 ```
-# teams.env
+# notify.env
 NOTIFY_TEAMS_TENANT_ID=your-tenant-id
 NOTIFY_TEAMS_CLIENT_ID=your-client-id
 NOTIFY_TEAMS_CLIENT_SECRET=your-secret
@@ -101,10 +109,12 @@ NOTIFY_TEAMS_DEFAULT_CHANNEL=Alerts
 ```
 
 ```bash
-notify send --env-file ./teams.env --message "Done"
+notify send --env-file ./notify.env --message "Done"
 ```
 
-Keep the env file out of source control — add `*.env` to your `.gitignore`.
+If the file is named `notify.env` and is in the current directory, it is loaded automatically without `--env-file`.
+
+Keep the env file out of source control — add `notify.env` to your `.gitignore`.
 
 ### Saving a default configuration
 
@@ -230,7 +240,7 @@ notify send --team "DevOps" --channel "Alerts" -m "Test" --dry-run
 ### Use an env file instead of environment variables
 
 ```bash
-notify send --env-file ./teams.env -m "Done"
+notify send --env-file ./notify.env -m "Done"
 ```
 
 ### Discover available teams and channels
@@ -387,7 +397,7 @@ fi
 **`error: authentication failed`** (exit code 2)
 - Verify the tenant ID, client ID, and client secret are correct
 - Check the client secret has not expired — regenerate it in the Azure portal if needed
-- Confirm admin consent has been granted for `ChannelMessage.Send` in API permissions
+- Confirm admin consent has been granted for `Team.ReadBasic.All` and `Channel.ReadBasic.All` in API permissions
 
 **`error: No team found with the name '...'`** (exit code 3)
 - Run `notify list` to see the exact team names visible to the app
@@ -403,6 +413,5 @@ fi
 - A 5xx response is a transient Graph API error — retry after a short delay
 
 **`error: graph api error` when sending but `list` works** (exit code 4)
-- The `notify` Teams app is likely not installed in the target team — this is the most common cause
-- Install it via **Manage team → Apps → Upload an app** and select `notify-app.zip`
-- Only a team owner can install apps — being a member or channel creator is not sufficient
+- **Known Microsoft bug (March 2026):** The `ChannelMessage.Send.Group` RSC permission is not currently honoured by the Graph API send endpoint. This is a confirmed Microsoft issue with escalation in progress — see [MicrosoftDocs/msteams-docs #14043](https://github.com/MicrosoftDocs/msteams-docs/issues/14043). Your configuration is correct; no changes are needed.
+- If the bug has been resolved, verify the `notify` Teams app is installed in the target team via **Manage team → Apps**. Only a team owner can install apps.

@@ -49,7 +49,7 @@ notify send --team DevOps --channel Alerts --file ./message.html --html
 echo "Build failed" | notify send --team DevOps --channel Alerts
 
 # Use a credentials file (useful for cron jobs)
-notify send --env-file ./teams.env --team DevOps --channel Alerts --message "Done"
+notify send --env-file ./notify.env --team DevOps --channel Alerts --message "Done"
 
 # Dry run — prints the resolved request without sending
 notify send --team DevOps --channel Alerts --message "test" --dry-run
@@ -90,9 +90,9 @@ NOTIFY_TEAMS_DEFAULT_CHANNEL=Alerts
 1. In the [Azure portal](https://portal.azure.com), open **Entra ID > App registrations > New registration**
 2. Note the **Directory (tenant) ID** and **Application (client) ID** from the Overview page
 3. Under **Certificates & secrets**, create a new client secret and copy the **value** (not the ID)
-4. Under **API permissions**, add `Microsoft Graph > Application permissions > ChannelMessage.Send`
+4. Under **API permissions**, add `Microsoft Graph > Application permissions > Team.ReadBasic.All` and `Channel.ReadBasic.All`
 5. Click **Grant admin consent**
-6. Add the app to each team it needs to post to: open the team in Teams, go to **Manage team > Apps > Add an app**, search for your app registration by name
+6. Upload the `notify` Teams app to your org's Teams app catalogue and install it in each team — this grants the RSC permission required for sending. See [TeamsApp/README.md](TeamsApp/README.md) for packaging and installation steps.
 
 ## Commands
 
@@ -170,7 +170,7 @@ await graph.SendMessageAsync(new SendMessageRequest
 });
 ```
 
-See the [Notify.Teams library guide](Documentation/Notify.Teams-Library-Guide.md) for full API documentation.
+See the [Notify.Teams library guide](Documentation/Providers/teams/Notify.Teams-Library-Guide.md) for full API documentation.
 
 ## Exit codes
 
