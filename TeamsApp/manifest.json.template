@@ -11,8 +11,8 @@
     "termsOfUseUrl": "https://github.com/EvilGeniusCore/Notify"
   },
   "name": {
-    "short": "notify",
-    "full": "notify — Automated Channel Notifications"
+    "short": "Notify",
+    "full": "Notify — Automated Channel Notifications"
   },
   "description": {
     "short": "Send automated notifications to this team from scripts and pipelines.",

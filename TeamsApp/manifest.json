@@ -1,7 +1,7 @@
 {
   "$schema": "https://developer.microsoft.com/json-schemas/teams/v1.16/MicrosoftTeams.schema.json",
   "manifestVersion": "1.16",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "id": "e0f04c45-7db3-417b-9d05-d02b30d675a4",
   "packageName": "com.evilgeniuscore.notify.teams",
   "developer": {
@@ -11,8 +11,8 @@
     "termsOfUseUrl": "https://github.com/EvilGeniusCore/Notify"
   },
   "name": {
-    "short": "notify",
-    "full": "notify — Automated Channel Notifications"
+    "short": "Notify",
+    "full": "Notify — Automated Channel Notifications"
   },
   "description": {
     "short": "Send automated notifications to this team from scripts and pipelines.",
