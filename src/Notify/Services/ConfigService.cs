@@ -67,7 +67,7 @@ public class ConfigService
         // Layer 3 — env file (highest priority)
         // Explicit --env-file takes precedence; fall back to .env in the current directory.
         var resolvedEnvFile = envFilePath
-            ?? (File.Exists(".env") ? ".env" : null);
+            ?? (File.Exists("notify.env") ? "notify.env" : null);
 
         if (resolvedEnvFile is not null)
         {
