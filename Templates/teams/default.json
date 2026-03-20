@@ -1,0 +1,13 @@
+{
+  "@type": "MessageCard",
+  "@context": "http://schema.org/extensions",
+  "themeColor": "CC0000",
+  "summary": "Notification",
+  "title": "Notification Title",
+  "sections": [
+    {
+      "markdown": true,
+      "text": "## Results\n\n| Job | Status | Duration |\n|---|---|---|\n| Build | ✅ Passed | 1m 42s |\n| Unit Tests | ✅ Passed | 0m 58s |\n| Integration Tests | ❌ Failed | 2m 11s |\n| Deploy | ⏭️ Skipped | — |"
+    }
+  ]
+}

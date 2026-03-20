@@ -4,7 +4,6 @@ namespace Notify.Tests.Services;
 
 public class ConfigServiceTests : IDisposable
 {
-    // Env vars set during tests are isolated via this list and cleaned up in Dispose.
     private readonly List<string> _envVarsSet = [];
     private readonly List<string> _tempFiles  = [];
 
@@ -35,29 +34,13 @@ public class ConfigServiceTests : IDisposable
     // -------------------------------------------------------------------------
 
     [Fact]
-    public async Task LoadAsync_ReadsEnvVars()
+    public async Task LoadAsync_ReadsWebhookUrlFromEnvVar()
     {
-        SetEnv("NOTIFY_TEAMS_TENANT_ID",     "env-tenant");
-        SetEnv("NOTIFY_TEAMS_CLIENT_ID",     "env-client");
-        SetEnv("NOTIFY_TEAMS_CLIENT_SECRET", "env-secret");
+        SetEnv("NOTIFY_TEAMS_WEBHOOK_URL", "https://env.example.com/webhook");
 
-        var config = await new ConfigService().LoadAsync(null);
+        var config = await new ConfigService().LoadAsync(envFilePath: "nonexistent.env");
 
-        Assert.Equal("env-tenant", config.TenantId);
-        Assert.Equal("env-client", config.ClientId);
-        Assert.Equal("env-secret", config.ClientSecret);
-    }
-
-    [Fact]
-    public async Task LoadAsync_ReadsDefaultsFromEnvVars()
-    {
-        SetEnv("NOTIFY_TEAMS_DEFAULT_TEAM",    "env-team");
-        SetEnv("NOTIFY_TEAMS_DEFAULT_CHANNEL", "env-channel");
-
-        var config = await new ConfigService().LoadAsync(null);
-
-        Assert.Equal("env-team",    config.DefaultTeam);
-        Assert.Equal("env-channel", config.DefaultChannel);
+        Assert.Equal("https://env.example.com/webhook", config.WebhookUrl);
     }
 
     // -------------------------------------------------------------------------
@@ -65,19 +48,14 @@ public class ConfigServiceTests : IDisposable
     // -------------------------------------------------------------------------
 
     [Fact]
-    public async Task LoadAsync_ReadsEnvFile()
+    public async Task LoadAsync_ReadsWebhookUrlFromEnvFile()
     {
-        var envFile = await WriteTempFileAsync("""
-            NOTIFY_TEAMS_TENANT_ID=file-tenant
-            NOTIFY_TEAMS_CLIENT_ID=file-client
-            NOTIFY_TEAMS_CLIENT_SECRET=file-secret
-            """);
+        var envFile = await WriteTempFileAsync(
+            "NOTIFY_TEAMS_WEBHOOK_URL=https://file.example.com/webhook");
 
         var config = await new ConfigService().LoadAsync(envFile);
 
-        Assert.Equal("file-tenant", config.TenantId);
-        Assert.Equal("file-client", config.ClientId);
-        Assert.Equal("file-secret", config.ClientSecret);
+        Assert.Equal("https://file.example.com/webhook", config.WebhookUrl);
     }
 
     [Fact]
@@ -85,25 +63,25 @@ public class ConfigServiceTests : IDisposable
     {
         var envFile = await WriteTempFileAsync("""
             # this is a comment
-            NOTIFY_TEAMS_TENANT_ID=real-tenant
+            NOTIFY_TEAMS_WEBHOOK_URL=https://file.example.com/webhook
             """);
 
         var config = await new ConfigService().LoadAsync(envFile);
 
-        Assert.Equal("real-tenant", config.TenantId);
+        Assert.Equal("https://file.example.com/webhook", config.WebhookUrl);
     }
 
     [Fact]
     public async Task LoadAsync_EnvFileIgnoresLinesWithoutEquals()
     {
         var envFile = await WriteTempFileAsync("""
-            NOTIFY_TEAMS_TENANT_ID=tenant-value
+            NOTIFY_TEAMS_WEBHOOK_URL=https://file.example.com/webhook
             INVALID_LINE_NO_EQUALS
             """);
 
         var config = await new ConfigService().LoadAsync(envFile);
 
-        Assert.Equal("tenant-value", config.TenantId);
+        Assert.Equal("https://file.example.com/webhook", config.WebhookUrl);
     }
 
     // -------------------------------------------------------------------------
@@ -113,27 +91,13 @@ public class ConfigServiceTests : IDisposable
     [Fact]
     public async Task LoadAsync_EnvFileOverridesEnvVar()
     {
-        SetEnv("NOTIFY_TEAMS_TENANT_ID", "env-tenant");
-
-        var envFile = await WriteTempFileAsync("NOTIFY_TEAMS_TENANT_ID=file-tenant");
-
-        var config = await new ConfigService().LoadAsync(envFile);
-
-        Assert.Equal("file-tenant", config.TenantId);
-    }
-
-    [Fact]
-    public async Task LoadAsync_EnvFileDoesNotClearUnmentionedEnvVars()
-    {
-        SetEnv("NOTIFY_TEAMS_CLIENT_ID", "env-client");
-
-        // env-file only sets TenantId
-        var envFile = await WriteTempFileAsync("NOTIFY_TEAMS_TENANT_ID=file-tenant");
+        SetEnv("NOTIFY_TEAMS_WEBHOOK_URL", "https://env.example.com/webhook");
+        var envFile = await WriteTempFileAsync(
+            "NOTIFY_TEAMS_WEBHOOK_URL=https://file.example.com/webhook");
 
         var config = await new ConfigService().LoadAsync(envFile);
 
-        Assert.Equal("file-tenant", config.TenantId);
-        Assert.Equal("env-client",  config.ClientId);
+        Assert.Equal("https://file.example.com/webhook", config.WebhookUrl);
     }
 
     // -------------------------------------------------------------------------
@@ -154,37 +118,21 @@ public class ConfigServiceTests : IDisposable
     // -------------------------------------------------------------------------
 
     [Fact]
-    public async Task SaveAsync_ThenLoad_RoundTripsAllFields()
+    public async Task SaveAsync_ThenLoad_RoundTripsWebhookUrl()
     {
-        // Point the service at a temp directory so we don't touch the real config file
         var tempConfig = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString(), "config.json");
         _tempFiles.Add(tempConfig);
 
-        var service = new TestableConfigService(tempConfig);
-
-        var original = new Notify.Models.AppConfig
-        {
-            TenantId       = "saved-tenant",
-            ClientId       = "saved-client",
-            ClientSecret   = "saved-secret",
-            DefaultTeam    = "saved-team",
-            DefaultChannel = "saved-channel"
-        };
+        var service  = new TestableConfigService(tempConfig);
+        var original = new Notify.Models.AppConfig { WebhookUrl = "https://saved.example.com/webhook" };
 
         await service.SaveAsync(original);
-        var loaded = await service.LoadAsync(null);
+        var loaded = await service.LoadAsync(envFilePath: "nonexistent.env");
 
-        Assert.Equal("saved-tenant",   loaded.TenantId);
-        Assert.Equal("saved-client",   loaded.ClientId);
-        Assert.Equal("saved-secret",   loaded.ClientSecret);
-        Assert.Equal("saved-team",     loaded.DefaultTeam);
-        Assert.Equal("saved-channel",  loaded.DefaultChannel);
+        Assert.Equal("https://saved.example.com/webhook", loaded.WebhookUrl);
     }
 }
 
-/// <summary>
-/// Subclass that redirects the config file to a temp path for testing.
-/// </summary>
 internal class TestableConfigService(string configFilePath) : ConfigService
 {
     public override string GetConfigFilePath() => configFilePath;

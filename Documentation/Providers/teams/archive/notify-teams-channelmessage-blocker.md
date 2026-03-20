@@ -31,7 +31,7 @@ Package the app as a Teams application and install it directly into each team it
 - Breaks the original "drop credentials in, point at any team" design goal — the app must already be installed in a team before it can post there
 - Not suitable as a truly general-purpose tool across an organisation without a centralised app catalogue deployment
 
-**Verdict:** The most viable path. Client Credentials auth is preserved, no licence cost, and it is Microsoft's documented supported approach for this scenario. The operational overhead is the main trade-off.
+**Verdict:** Not viable. `ChannelMessage.Send.Group` does not function for regular app-only messaging — it is limited to data migration scenarios only. This was confirmed in March 2026 after full implementation and testing. See the Active Blocker section.
 
 ### Option 2 — Service Account (Delegated Permissions)
 
@@ -127,7 +127,7 @@ No major CI/CD platform has built a Graph API integration for channel notificati
 - Does not scale well for organisations with many channels — managing a collection of webhook URLs is operationally messier than a single App Registration
 - Developer sentiment across the industry on the Power Automate migration has been sharply negative — described as a "greedy cash grab" due to licensing requirements (source: The Register, Computerworld, 2024)
 
-**Verdict:** The simplest implementation and the proven industry standard path — it is what every major CI/CD platform has landed on for Teams notifications. The trade-off is one URL per channel, no discovery, and a Power Automate dependency. A strong option if RSC cannot be set up, and a realistic interim path while RSC is being arranged with IT.
+**Verdict:** The most viable currently unblocked path. It is what every major CI/CD platform has landed on for Teams notifications, and the only option that does not require IT involvement or Microsoft support to resolve. The trade-offs — one URL per channel, no discovery, Power Automate dependency — are real but manageable. RSC is confirmed non-functional for this use case, making webhook the leading candidate for the primary send path.
 
 ## Industry Context — Why Nobody Uses Graph API for This
 
@@ -141,84 +141,34 @@ The Graph API remains the right choice for tools that need **dynamic channel dis
 
 ## Recommended Path
 
-Given the industry research, the recommended path is:
+Given the industry research and the confirmed permanent limitation of app-only channel messaging (see Active Blocker below), the recommended path is:
 
-1. **Option 4 (Webhook) first** — implement webhook support as the immediate path to a working tool. It is what every other platform uses, it requires no IT involvement beyond creating a Power Automate flow, and it unblocks testing without waiting for the Technical Services Committee
-2. **Option 1 (RSC) in parallel** — continue pursuing RSC with IT for the full Graph API path. RSC delivers the general-purpose capability (any team, any channel, discovery) that makes `notify` more than just another webhook poster
-3. **Ship with both modes** — `--webhook <url>` for the simple case, full Graph API credentials for the general-purpose case. Users choose based on their setup
+1. **Option 4 (Webhook) — primary supported path** — implement webhook support as the primary send mechanism. It is what every other platform uses, requires no IT involvement beyond creating a Power Automate flow, and unblocks the tool entirely.
+2. **Option 1 (RSC) — indefinitely blocked** — app-only channel messaging via RSC is not supported by Microsoft for normal messaging use cases. Do not pursue RSC as a viable path unless Microsoft explicitly documents and ships app-only send support for standard channels.
+3. **Ship webhook mode first** — `NOTIFY_TEAMS_WEBHOOK_URL` env var and `--webhook <url>` CLI option. Graph API credentials remain for `list` and name resolution.
 4. Do not pursue Option 2 (Service Account) or Option 3 (Bot Framework)
 
-Integration tests for the Graph API path remain blocked until RSC is set up with the Technical Services Committee. Webhook integration tests can proceed immediately.
+Webhook integration tests can proceed immediately. The Graph API `send` path should be considered unsupported until Microsoft changes the platform.
 
-## Chosen Solution — RSC via Org App Catalogue
+## Prior Chosen Solution — RSC via Org App Catalogue (abandoned)
 
-### What we are building
+The original chosen solution was Option 1 (RSC) deployed through the organisation's Teams app catalogue. The intent was to upload the app to Teams Admin Center once, after which team owners could self-install it and `notify` could post to any standard channel using the existing Client Credentials auth path.
 
-Option 1 (RSC) deployed through the organisation's Teams app catalogue — the **"Added by your org"** section in Microsoft Teams. The app is uploaded once to Teams Admin Center by someone with the Teams Administrator role. After that, any team owner can install it in their team themselves from the catalogue, without raising an IT ticket.
+This approach is abandoned. See the Active Blocker section below for why.
 
-Once installed in a team, `notify` can post to any **standard channel** in that team using the existing Client Credentials auth path — no changes to `AuthService` or the credential model.
+## Solution — To Be Decided
 
-**Note on private channels:** RSC is granted at the team level and covers standard channels only. Private channels are a separate security boundary and are not accessible regardless of RSC consent. If someone needs a dedicated notification channel visible only to certain people, a standard channel with a descriptive name (e.g. `#backups`) is the right approach — private channel support is not something `notify` can provide without a separate permission model.
+The RSC path is confirmed permanently blocked. A solution has not yet been chosen. The viable candidates are Option 4 (Webhook) and Option 3 (Bot Framework) — see the analysis above. Option 2 (Service Account) and Option 1 (RSC) are off the table.
 
-**Note on direct messages:** `ChatMessage.Send` — the permission for sending DMs to individuals — is also delegated-only, the same blocker as `ChannelMessage.Send`. Direct messages to individuals are not supported. For personal notifications, create a dedicated standard channel in the relevant team. The `--to` flag is out of scope for v1.
+**Note on direct messages:** `ChatMessage.Send` — the permission for sending DMs to individuals — is also delegated-only. Direct messages to individuals are not supported regardless of which send mechanism is chosen. The `--to` flag is out of scope for v1.
 
 ### Intended use case
 
 A nightly backup script on a Linux server posts the result to a `#backups` channel in the team. Every morning the team can see at a glance what succeeded and what failed without logging into any server. This is the canonical use case — an unattended script running on a schedule, posting a plain-text or simple HTML notification to a shared team channel.
 
-### The deployment flow
+## Active Blocker — App-Only Channel Messaging is Not Supported (March 2026)
 
-**IT does once, ever:**
-1. Create the Entra ID App Registration with `Team.ReadBasic.All` and `Channel.ReadBasic.All` application permissions and grant admin consent
-2. Upload `notify-app.zip` to Teams Admin Center → Manage apps → Upload custom app
-3. Ensure the org app permission policy allows team owners to install org apps (most orgs leave this open by default)
-
-**Optional — IT deploys org-wide via app setup policy:**
-
-Instead of waiting for each team owner to self-install, a Teams admin can configure an app setup policy that automatically deploys `notify` to every team in the org. This means the app is already present in every team with no action required from team owners. This is a larger ask of IT but reduces per-team friction to zero. Both models are valid — self-service from catalogue for orgs that prefer opt-in, policy deployment for orgs that want it everywhere from day one.
-
-**Team owner installs the app — self-service, no IT ticket:**
-
-Installing a Teams app requires the **team owner** role. Being a team member, or having created a channel within the team, does not grant this permission. If the person who wants notifications is not a team owner they need to ask their team owner to complete this step.
-
-1. Team owner opens their team → Apps → searches "notify" under "Added by your org"
-2. Clicks install — RSC consent (`ChannelMessage.Send.Group`) is granted automatically at that moment for that team
-3. The bot posts a welcome message to General with the team ID
-
-**Person configuring the sender:**
-1. Run `notify list` to see teams and channel IDs
-2. Add the team ID and channel name to config or the send command — done
-
-### Why we chose this over the alternatives
-
-**Why not Webhook (Option 4)?**
-
-The webhook path (Power Automate workflow HTTP trigger) is what every major CI/CD platform has landed on because it requires zero Entra ID setup. We evaluated it seriously and rejected it for this project for three reasons:
-
-- **One URL per channel.** Every channel that needs notifications requires its own Power Automate workflow and its own URL managed as a secret. A single App Registration covers every team and channel the app has access to — the credential set never grows as more channels are added.
-- **No discovery.** The `list` command and name-to-ID resolution are explicit design goals of `notify`. Neither can be built on webhooks — the target is encoded in the URL and there is no API to enumerate teams or channels.
-- **Power Automate licence dependency.** The HTTP trigger for Teams notifications may require a premium Power Automate licence depending on the organisation's M365 plan. This introduces an external cost and approval process that is outside our control and varies per organisation. RSC has no ongoing cost beyond the App Registration that is already required.
-
-The webhook is a valid fallback for organisations that cannot or will not do the one-time Admin Center setup, and we may implement `--webhook <url>` as a secondary mode in a future version. It is not the primary path.
-
-**Why not Service Account (Option 2) or Bot Framework (Option 3)?**
-
-Service Account requires purchasing an M365 licence, uses a deprecated auth flow (ROPC), and is incompatible with MFA — which rules it out entirely on a government-managed tenant. Bot Framework requires an additional Azure resource, two auth paths in the codebase, and the same per-team installation overhead as RSC but with more complexity. Neither option offers anything RSC does not, at higher cost and friction.
-
-**Why RSC via org catalogue and not RSC via direct sideloading?**
-
-Sideloading requires IT to upload the app directly into each target team. Every new team is a new IT ticket. The org catalogue changes this completely — IT uploads once to Admin Center and team owners self-install from that point on. The ongoing operational overhead drops to zero after the initial setup.
-
-### Caveats
-
-- **Teams Administrator role required** for the one-time Admin Center upload. This is the only IT touchpoint that cannot be self-served.
-- **Org app permission policy** must allow team owners to install org apps. This is the default in most tenants but can be locked down by the Teams admin. Worth confirming before expecting self-service installation to work.
-- **Standard channels only.** Private channels are not accessible via RSC.
-- **Integration tests remain blocked** until the App Registration and Admin Center deployment are in place. The auth path is implemented; it cannot be validated until RSC is live.
-
-## Active Blocker — `ChannelMessage.Send.Group` RSC Permission is Broken (March 2026)
-
-**Status: Confirmed Microsoft bug. Escalation in progress.**
+**Status: Confirmed permanent platform limitation. RSC path abandoned.**
 
 With the Teams app package built, uploaded to the org catalogue, installed in a test team (Notify-Test), and all Entra ID permissions granted and consented, `notify send` fails with:
 
@@ -228,17 +178,23 @@ API requires one of 'Teamwork.Migrate.All'.
 Roles on the request 'Channel.ReadBasic.All, Team.ReadBasic.All, Group.Selected'.
 ```
 
-`Group.Selected` in the token confirms RSC is being presented correctly. The issue is not with our configuration — it is a bug in the Graph API endpoint.
+`Group.Selected` in the token confirms RSC is being presented correctly. The issue is not with our configuration.
 
-**Bug report:** [MicrosoftDocs/msteams-docs #14043 — ChannelMessage.Send.Group doesn't work](https://github.com/MicrosoftDocs/msteams-docs/issues/14043)
+**Bug report filed:** [MicrosoftDocs/msteams-docs #14043 — ChannelMessage.Send.Group doesn't work](https://github.com/MicrosoftDocs/msteams-docs/issues/14043)
 
 Opened January 2026. Microsoft response on 17 February 2026 (Prasad-MSFT):
 
 > "A bug has been raised for this issue. After engineering team's confirmation, we will update the documentation wherever applicable."
 
-**Root cause:** The Graph API endpoint `POST /teams/{team-id}/channels/{channel-id}/messages` does not honour the RSC application permission `ChannelMessage.Send.Group` for regular app-only message sends. It only accepts `Teamwork.Migrate.All` (a migration-only permission). The permission is documented as supported but is not implemented.
+**Updated understanding (March 2026):** Research and forum analysis indicates this is not a bug waiting to be fixed — it is a permanent platform limitation. `ChannelMessage.Send.Group` was designed for data migration scenarios only (`Teamwork.Migrate.All`), not general-purpose app-only messaging. The Graph API endpoint `POST /teams/{team-id}/channels/{channel-id}/messages` does not support app-only context for regular message sends. The permission name and documentation are misleading.
 
-**`notify list` works correctly** — `Team.ReadBasic.All` and `Channel.ReadBasic.All` are functioning as expected. Only the send path is blocked.
+Per Microsoft's own forum and documentation:
+
+> "Regular message sending requires a bot in user context; app-only context is not supported except for migration. The permission description is misleading — this use case is not widely supported for normal apps/bots."
+
+The community consensus from the same thread:
+
+> "There is no application type flow that can be used in production, only the one that can be used for data migration. If that's the case, I would like the documentation to clearly reflect that."
 
 **What is confirmed working:**
 - Entra ID App Registration — correct
@@ -248,12 +204,8 @@ Opened January 2026. Microsoft response on 17 February 2026 (Prasad-MSFT):
 - Auth and Graph API connectivity — correct (`notify list` returns teams)
 - Token contains `Group.Selected` — correct
 
-**What is broken:** Microsoft's implementation of `ChannelMessage.Send.Group` on the send endpoint.
+**What is not supported:** App-only channel message sending via Graph API for regular use. This is a Microsoft platform constraint, not a configuration or implementation issue.
 
-**Escalation:** Escalation to Microsoft has been requested (March 2026). Bug is tracked at the link above.
+**`notify list` works correctly** — `Team.ReadBasic.All` and `Channel.ReadBasic.All` are functioning as expected. Only the send path is affected.
 
-**Unblocking options while waiting for the fix:**
-
-1. **Wait** — the bug is acknowledged and on Microsoft's engineering backlog. No code changes needed when it is fixed.
-2. **Webhook fallback** — implement `--webhook <url>` (Power Automate HTTP trigger) as a secondary send path. Unblocks immediate use at the cost of per-channel URL management. See Option 4 above.
-3. **Bot Framework** — full bot implementation. Significant complexity. See Option 3 above.
+**Path forward:** RSC is off the table. A replacement send mechanism must be chosen. See the Solution section above.

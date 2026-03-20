@@ -1,6 +1,6 @@
 # Notify.Teams
 
-Send Microsoft Teams channel messages from any .NET application via the Graph API. Handles authentication, team/channel name resolution, and message formatting (plain text and HTML).
+Send Microsoft Teams channel messages from any .NET application via Power Automate webhooks. No app registration or admin consent required — just a webhook URL from the Teams Workflows feature.
 
 ```bash
 dotnet add package Notify.Teams
@@ -11,62 +11,68 @@ dotnet add package Notify.Teams
 ```csharp
 using Notify.Teams.Models;
 using Notify.Teams.Services;
+using Microsoft.Extensions.Logging.Abstractions;
 
-var credentials = new TeamsCredentials
+var credentials = new WebhookCredentials
 {
-    TenantId     = "your-tenant-id",
-    ClientId     = "your-client-id",
-    ClientSecret = "your-client-secret"
+    WebhookUrl = Environment.GetEnvironmentVariable("NOTIFY_TEAMS_WEBHOOK_URL")!,
 };
 
-var auth    = new AuthService(credentials);
-var graph   = new GraphService(auth.BuildGraphClient());
+var service = new WebhookService(new HttpClient(), NullLogger<WebhookService>.Instance);
 
-// Resolve names to IDs (or pass GUIDs directly)
-var teamId    = await graph.ResolveTeamIdAsync("DevOps");
-var channelId = await graph.ResolveChannelIdAsync(teamId, "Alerts");
-
-await graph.SendMessageAsync(new SendMessageRequest
+await service.SendMessageAsync(new SendMessageRequest
 {
-    TeamId    = teamId,
-    ChannelId = channelId,
-    Body      = "Deployment complete",
-});
+    Body    = "Deployment complete",
+    Subject = "Build #42",
+}, credentials);
 ```
 
-## Authentication
+## Getting a webhook URL
 
-Requires an Entra ID App Registration with `Team.ReadBasic.All` and `Channel.ReadBasic.All` application permissions (admin consent required), plus the `notify` Teams app installed in each target team to grant the `ChannelMessage.Send.Group` RSC permission for app-only sending. Supply the tenant ID, client ID, and client secret from the registration.
+Each channel needs its own URL. Any team member can create one — no admin required.
 
-See the [full setup guide](https://github.com/EvilGeniusCore/Notify/blob/master/TeamsApp/Documentation/admin-setup-guide.md) for step-by-step instructions.
+1. Open the target channel in Teams
+2. Click **...** → **Workflows**
+3. Search for **"Send webhook alerts to a channel"** and select it
+4. Name it (e.g. `notify`), confirm the channel, click **Add workflow**
+5. Copy the generated URL
 
-## HTML messages
+Treat the URL as a secret — it grants anyone the ability to post to that channel.
 
-Set `IsHtml = true` on the request to send formatted content. Teams renders a subset of HTML: bold, italic, lists, links, code blocks, and blockquotes.
+## Sending with a subject line
 
 ```csharp
-await graph.SendMessageAsync(new SendMessageRequest
+await service.SendMessageAsync(new SendMessageRequest
 {
-    TeamId    = teamId,
-    ChannelId = channelId,
-    Subject   = "Build #42 Failed",
-    Body      = "<b>Failed</b> — branch <code>main</code>",
-    IsHtml    = true,
-});
+    Subject = "Build #42 Failed",
+    Body    = "Unit tests failed on main.",
+}, credentials);
 ```
 
-## Listing teams and channels
+## Sending from a MessageCard template
+
+Use `SendFromTemplateAsync` to post a pre-built MessageCard JSON payload with optional overrides:
 
 ```csharp
-var teams    = await graph.ListTeamsAsync();
-var channels = await graph.ListChannelsAsync(teamId);
+using System.Text.Json.Nodes;
+
+var json     = await File.ReadAllTextAsync("alert-card.json");
+var template = JsonNode.Parse(json)!.AsObject();
+
+await service.SendFromTemplateAsync(
+    template,
+    subjectOverride: "Deployment failed",
+    bodyOverride:    "Branch: main — see pipeline for details",
+    credentials);
 ```
 
-## Source and implementation example
+If `subjectOverride` is provided it replaces the `title` and `summary` fields in the template. If `bodyOverride` is provided it is appended as a new markdown section.
 
-Source code and full documentation are on GitHub at [EvilGeniusCore/Notify](https://github.com/EvilGeniusCore/Notify).
+## Source
 
-If you want to see a complete working implementation using this library, the `notify` CLI tool in that repository is built entirely on `Notify.Teams` and covers credential loading, command parsing, exit code handling, and dry-run support — a useful reference for integrating the library into your own application.
+Source code and full documentation: [EvilGeniusCore/Notify](https://github.com/EvilGeniusCore/Notify).
+
+The `notify` CLI tool in that repository is built entirely on `Notify.Teams` and covers credential loading, command parsing, exit code handling, and dry-run support — a useful reference for integrating the library into your own application.
 
 ## Licence
 

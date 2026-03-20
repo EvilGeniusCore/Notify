@@ -30,15 +30,22 @@ FAILED=()
 
 for profile in "${TARGET_PROFILES[@]}"; do
     out_dir="${SOLUTION_DIR}artifacts/${profile}"
+    zip_path="${SOLUTION_DIR}artifacts/notify-${profile}.zip"
+
     if [ -d "$out_dir" ]; then
         echo "    Cleaning $out_dir ..."
         rm -rf "$out_dir"
+    fi
+    if [ -f "$zip_path" ]; then
+        rm -f "$zip_path"
     fi
 
     echo ""
     echo "==> Publishing $profile ..."
     if dotnet publish "$PROJECT_PATH" -p:PublishProfile="$profile" -p:SolutionDir="$SOLUTION_DIR"; then
-        echo "OK: $profile"
+        echo "    Zipping $profile ..."
+        (cd "$out_dir" && zip -r "$zip_path" .)
+        echo "OK: $profile -> artifacts/notify-${profile}.zip"
     else
         echo "FAILED: $profile"
         FAILED+=("$profile")

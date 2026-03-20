@@ -11,19 +11,14 @@ namespace Notify;
 internal static class ServiceFactory
 {
     /// <summary>
-    /// Validates <paramref name="config"/>, builds an authenticated
-    /// <see cref="GraphService"/>, and returns it ready for use.
+    /// Validates <paramref name="config"/> and returns a <see cref="WebhookService"/> ready for use.
     /// </summary>
     /// <exception cref="InvalidOperationException">
-    /// Re-thrown from <see cref="AppConfig.Validate"/> when credentials are missing.
+    /// Re-thrown from <see cref="AppConfig.Validate"/> when webhook URL is missing.
     /// </exception>
-    internal static GraphService BuildGraphService(AppConfig config)
+    internal static WebhookService BuildWebhookService(AppConfig config)
     {
         config.Validate();
-
-        var auth  = new AuthService(config.ToCredentials(), NullLogger<AuthService>.Instance);
-        var client = auth.BuildGraphClient();
-
-        return new GraphService(client, NullLogger<GraphService>.Instance);
+        return new WebhookService(new HttpClient(), NullLogger<WebhookService>.Instance);
     }
 }

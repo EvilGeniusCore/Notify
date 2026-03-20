@@ -1,61 +1,66 @@
 using System.CommandLine;
 using System.CommandLine.Invocation;
-using Azure.Identity;
-using Microsoft.Graph.Models.ODataErrors;
-using Notify.Teams.Exceptions;
+using System.Text.Json.Nodes;
 using Notify.Teams.Models;
 using Notify.Services;
 
 namespace Notify.Commands;
 
 /// <summary>
-/// Sends a message to a Teams channel.
+/// Sends a message to a Teams channel via a Power Automate webhook URL.
 /// Supports --message, --file, and stdin as message sources.
 /// </summary>
 public static class SendCommand
 {
     public static Command Build(Option<string?> envFileOption)
     {
-        var command = new Command("send", "Send a message to a Teams channel");
+        var command = new Command("send", """
+            Send a message to a Teams channel via a Power Automate webhook URL.
+
+            Message sources (one required): --message, --file, --template, or piped stdin.
+            Webhook URL (one required):     --webhook, NOTIFY_TEAMS_WEBHOOK_URL env var,
+                                            notify.env file in current directory,
+                                            or saved default from 'notify configure'.
+            """);
 
         var messageOption = new Option<string?>(["-m", "--message"], "Message body (plain text or HTML with --html)")
             { ArgumentHelpName = "text" };
         var fileOption    = new Option<FileInfo?>(["-f", "--file"],   "Read message body from a file")
             { ArgumentHelpName = "path" };
-        var teamOption    = new Option<string?>(["-t", "--team"],     "Target team name or GUID (overrides NOTIFY_TEAMS_DEFAULT_TEAM)")
-            { ArgumentHelpName = "name|id" };
-        var channelOption = new Option<string?>(["-c", "--channel"],  "Target channel name or GUID (overrides NOTIFY_TEAMS_DEFAULT_CHANNEL)")
-            { ArgumentHelpName = "name|id" };
+        var webhookOption = new Option<string?>("--webhook",          "Webhook URL — overrides NOTIFY_TEAMS_WEBHOOK_URL")
+            { ArgumentHelpName = "url" };
         var subjectOption = new Option<string?>("--subject",          "Optional subject line shown above the message body")
             { ArgumentHelpName = "text" };
+        var templateOption = new Option<FileInfo?>("--template",       "Path to a provider-specific MessageCard JSON template file")
+            { ArgumentHelpName = "path" };
         var htmlFlag      = new Option<bool>("--html",                "Treat message body as HTML (Teams HTML subset supported)");
-        var dryRunFlag    = new Option<bool>("--dry-run",             "Print the resolved request without sending");
+        var dryRunFlag    = new Option<bool>("--dry-run",             "Print the payload without sending");
         var quietFlag     = new Option<bool>(["-q", "--quiet"],       "Suppress output; rely on exit code only");
 
         command.AddOption(messageOption);
         command.AddOption(fileOption);
-        command.AddOption(teamOption);
-        command.AddOption(channelOption);
+        command.AddOption(webhookOption);
         command.AddOption(subjectOption);
+        command.AddOption(templateOption);
         command.AddOption(htmlFlag);
         command.AddOption(dryRunFlag);
         command.AddOption(quietFlag);
 
         command.SetHandler(async (InvocationContext context) =>
         {
-            var envFile = context.ParseResult.GetValueForOption(envFileOption);
-            var message = context.ParseResult.GetValueForOption(messageOption);
-            var file    = context.ParseResult.GetValueForOption(fileOption);
-            var team    = context.ParseResult.GetValueForOption(teamOption);
-            var channel = context.ParseResult.GetValueForOption(channelOption);
-            var subject = context.ParseResult.GetValueForOption(subjectOption);
-            var isHtml  = context.ParseResult.GetValueForOption(htmlFlag);
-            var dryRun  = context.ParseResult.GetValueForOption(dryRunFlag);
-            var quiet   = context.ParseResult.GetValueForOption(quietFlag);
+            var envFile  = context.ParseResult.GetValueForOption(envFileOption);
+            var message  = context.ParseResult.GetValueForOption(messageOption);
+            var file     = context.ParseResult.GetValueForOption(fileOption);
+            var webhook  = context.ParseResult.GetValueForOption(webhookOption);
+            var subject  = context.ParseResult.GetValueForOption(subjectOption);
+            var template = context.ParseResult.GetValueForOption(templateOption);
+            var isHtml   = context.ParseResult.GetValueForOption(htmlFlag);
+            var dryRun   = context.ParseResult.GetValueForOption(dryRunFlag);
+            var quiet    = context.ParseResult.GetValueForOption(quietFlag);
 
             try
             {
-                // Resolve message body
+                // Resolve optional message body
                 string? body;
                 if (file is not null)
                     body = await File.ReadAllTextAsync(file.FullName);
@@ -69,65 +74,61 @@ public static class SendCommand
                 else
                     body = null;
 
-                if (body is null)
+                // Body is required unless a template is supplying the card content
+                if (body is null && template is null)
                 {
-                    Console.Error.WriteLine("error: no message provided — use --message, --file, or pipe via stdin.");
+                    Console.Error.WriteLine("error: no message provided — use --message, --file, --template, or pipe via stdin.");
                     context.ExitCode = ExitCodes.GeneralError;
                     return;
                 }
 
-                // Load config
+                // Load config and apply --webhook override
                 var configService = new ConfigService();
                 var config = await configService.LoadAsync(envFile);
 
-                // Apply command-line team/channel over configured defaults
-                var resolvedTeam    = team    ?? config.DefaultTeam;
-                var resolvedChannel = channel ?? config.DefaultChannel;
+                if (webhook is not null)
+                    config.WebhookUrl = webhook;
 
-                if (string.IsNullOrWhiteSpace(resolvedTeam))
-                {
-                    Console.Error.WriteLine("error: no team specified — use --team or set NOTIFY_TEAMS_DEFAULT_TEAM.");
-                    context.ExitCode = ExitCodes.ConfigurationMissing;
-                    return;
-                }
-
-                if (string.IsNullOrWhiteSpace(resolvedChannel))
-                {
-                    Console.Error.WriteLine("error: no channel specified — use --channel or set NOTIFY_TEAMS_DEFAULT_CHANNEL.");
-                    context.ExitCode = ExitCodes.ConfigurationMissing;
-                    return;
-                }
-
-                // Dry-run: print and exit without sending
+                // Dry-run: print resolved options and exit without sending
                 if (dryRun)
                 {
-                    Console.WriteLine($"[dry-run] team:    {resolvedTeam}");
-                    Console.WriteLine($"[dry-run] channel: {resolvedChannel}");
+                    Console.WriteLine($"[dry-run] webhook:  {config.WebhookUrl ?? "(not set)"}");
+                    if (template is not null)
+                        Console.WriteLine($"[dry-run] template: {template.FullName}");
                     if (subject is not null)
-                        Console.WriteLine($"[dry-run] subject: {subject}");
-                    Console.WriteLine($"[dry-run] html:    {isHtml.ToString().ToLowerInvariant()}");
-                    Console.WriteLine($"[dry-run] body:");
-                    Console.WriteLine(body);
+                        Console.WriteLine($"[dry-run] subject:  {subject}");
+                    if (body is not null)
+                    {
+                        Console.WriteLine($"[dry-run] html:     {isHtml.ToString().ToLowerInvariant()}");
+                        Console.WriteLine($"[dry-run] body:");
+                        Console.WriteLine(body);
+                    }
                     return;
                 }
 
-                // Build services and resolve IDs
                 config.Validate();
-                var graphService = ServiceFactory.BuildGraphService(config);
+                var webhookService = ServiceFactory.BuildWebhookService(config);
+                var credentials    = config.ToCredentials();
 
-                var teamId    = await graphService.ResolveTeamIdAsync(resolvedTeam, context.GetCancellationToken());
-                var channelId = await graphService.ResolveChannelIdAsync(teamId, resolvedChannel, context.GetCancellationToken());
-
-                var request = new SendMessageRequest
+                if (template is not null)
                 {
-                    TeamId    = teamId,
-                    ChannelId = channelId,
-                    Body      = body,
-                    IsHtml    = isHtml,
-                    Subject   = subject
-                };
+                    var json = await File.ReadAllTextAsync(template.FullName);
+                    var card = JsonNode.Parse(json)?.AsObject()
+                        ?? throw new InvalidOperationException($"Template is not a valid JSON object: {template.FullName}");
 
-                await graphService.SendMessageAsync(request, context.GetCancellationToken());
+                    await webhookService.SendFromTemplateAsync(card, subject, body, credentials, context.GetCancellationToken());
+                }
+                else
+                {
+                    var request = new SendMessageRequest
+                    {
+                        Body    = body!,
+                        IsHtml  = isHtml,
+                        Subject = subject,
+                    };
+
+                    await webhookService.SendMessageAsync(request, credentials, context.GetCancellationToken());
+                }
 
                 if (!quiet)
                     Console.WriteLine("Message sent.");
@@ -137,20 +138,10 @@ public static class SendCommand
                 Console.Error.WriteLine($"error: {ex.Message}");
                 context.ExitCode = ExitCodes.ConfigurationMissing;
             }
-            catch (TeamsNotFoundException ex)
+            catch (HttpRequestException ex)
             {
-                Console.Error.WriteLine($"error: {ex.Message}");
-                context.ExitCode = ExitCodes.NotFound;
-            }
-            catch (AuthenticationFailedException ex)
-            {
-                Console.Error.WriteLine($"error: authentication failed — {ex.Message}");
-                context.ExitCode = ExitCodes.AuthFailure;
-            }
-            catch (ODataError ex)
-            {
-                Console.Error.WriteLine($"error: graph api error — {ex.Error?.Message ?? ex.Message}");
-                context.ExitCode = ExitCodes.GraphApiError;
+                Console.Error.WriteLine($"error: webhook request failed — {ex.Message}");
+                context.ExitCode = ExitCodes.WebhookError;
             }
             catch (Exception ex)
             {

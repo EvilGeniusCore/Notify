@@ -1,6 +1,6 @@
 # notify
 
-A .NET 10 CLI tool for sending Microsoft Teams messages via the Graph API — designed for CI/CD pipelines, cron jobs, and scripts. Runs on Linux, Windows, and macOS with no .NET runtime required.
+A .NET 10 CLI tool for sending Microsoft Teams messages via Power Automate webhooks — designed for CI/CD pipelines, cron jobs, and scripts. Runs on Linux, Windows, and macOS with no .NET runtime required.
 
 ## Install
 
@@ -21,42 +21,44 @@ dotnet add package Notify.Teams
 ## Quick start
 
 ```bash
-# Set credentials once
-export NOTIFY_TEAMS_TENANT_ID=your-tenant-id
-export NOTIFY_TEAMS_CLIENT_ID=your-client-id
-export NOTIFY_TEAMS_CLIENT_SECRET=your-client-secret
+# Set your webhook URL
+export NOTIFY_TEAMS_WEBHOOK_URL=https://prod2-xx.region.logic.azure.com/...
 
 # Send a message
-notify send --team DevOps --channel Alerts --message "Deployment complete"
+notify send --message "Deployment complete"
 ```
+
+The webhook URL comes from Teams → channel → **...** → **Workflows** → "Send webhook alerts to a channel". See [Getting a webhook URL](#getting-a-webhook-url) below.
 
 ## Usage
 
 ```bash
 # Send a plain text message
-notify send --team DevOps --channel Alerts --message "Deployment complete"
+notify send --message "Deployment complete"
 
 # Send with a subject line
-notify send --team DevOps --channel Alerts --subject "Build #42 Failed" --message "Unit tests failed on main"
+notify send --subject "Build #42 Failed" --message "Unit tests failed on main"
 
 # Send an HTML formatted message
-notify send --team DevOps --channel Alerts --html --message "<b>Failed</b> — branch <code>main</code>"
+notify send --html --message "<b>Failed</b> — branch <code>main</code>"
 
 # Send message body from a file
-notify send --team DevOps --channel Alerts --file ./message.html --html
+notify send --file ./message.txt
 
 # Pipe stdin
-echo "Build failed" | notify send --team DevOps --channel Alerts
+echo "Build failed" | notify send
 
 # Use a credentials file (useful for cron jobs)
-notify send --env-file ./notify.env --team DevOps --channel Alerts --message "Done"
+notify send --env-file ./notify.env --message "Done"
 
-# Dry run — prints the resolved request without sending
-notify send --team DevOps --channel Alerts --message "test" --dry-run
+# Override the webhook URL per invocation
+notify send --webhook https://prod2-xx.region.logic.azure.com/... --message "Done"
 
-# Discover available teams and channels
-notify list
-notify list --team DevOps
+# Send a MessageCard JSON template (with optional body appended)
+notify send --template ./alert.json --subject "Deployment" --message "Extra context"
+
+# Dry run — prints the resolved options without sending
+notify send --message "test" --dry-run
 ```
 
 ## Configuration
@@ -70,75 +72,53 @@ Credentials are resolved in this order (highest priority first):
 ### Environment variables
 
 ```
-NOTIFY_TEAMS_TENANT_ID=<your-tenant-id>
-NOTIFY_TEAMS_CLIENT_ID=<your-client-id>
-NOTIFY_TEAMS_CLIENT_SECRET=<your-client-secret>
-NOTIFY_TEAMS_DEFAULT_TEAM=DevOps
-NOTIFY_TEAMS_DEFAULT_CHANNEL=Alerts
+NOTIFY_TEAMS_WEBHOOK_URL=<your-webhook-url>
 ```
 
 ### Typical patterns
 
 | Scenario | Approach |
 |---|---|
-| CI/CD pipeline or container | Set environment variables in the platform |
-| Cron job or script folder | `--env-file ./teams.env` alongside your script |
-| Developer laptop | Run `notify configure` once |
+| CI/CD pipeline or container | Set `NOTIFY_TEAMS_WEBHOOK_URL` as a pipeline secret/env var |
+| Cron job or script folder | `--env-file ./notify.env` alongside your script |
+| Developer laptop | Run `notify configure --webhook-url <url>` once |
 
-### Entra ID setup
+### Getting a webhook URL
 
-1. In the [Azure portal](https://portal.azure.com), open **Entra ID > App registrations > New registration**
-2. Note the **Directory (tenant) ID** and **Application (client) ID** from the Overview page
-3. Under **Certificates & secrets**, create a new client secret and copy the **value** (not the ID)
-4. Under **API permissions**, add `Microsoft Graph > Application permissions > Team.ReadBasic.All` and `Channel.ReadBasic.All`
-5. Click **Grant admin consent**
-6. Upload the `notify` Teams app to your org's Teams app catalogue and install it in each team — this grants the RSC permission required for sending. See [TeamsApp/README.md](TeamsApp/README.md) for packaging and installation steps.
+Each channel you want to post to needs its own webhook URL. Any team member can create one.
+
+1. Open the target channel in Teams
+2. Click **...** → **Workflows**
+3. Search for **"Send webhook alerts to a channel"** and select it
+4. Give the workflow a name (e.g. `notify`) and click **Next**
+5. Confirm the team and channel, then click **Add workflow**
+6. Copy the generated URL — this is your `NOTIFY_TEAMS_WEBHOOK_URL`
+
+The URL is a credential. Treat it like a password — store it in an env file or CI/CD secret, never in source control.
 
 ## Commands
 
 | Command | Description |
 |---|---|
 | `send` | Send a message to a Teams channel |
-| `configure` | Save default credentials and channel settings to the config file |
-| `list` | List all teams (no args) or channels within a team (`--team <name\|id>`) |
+| `configure` | Save the default webhook URL to the config file |
 | `version` | Show version, runtime, and OS info |
 
 ## Send options
 
 ```
--m, --message <text>      Message body — required unless --file or stdin is used
+-m, --message <text>      Message body — required unless --file, --template, or stdin is used
 -f, --file <path>         Read message body from a file
--t, --team <name|id>      Target team (overrides NOTIFY_TEAMS_DEFAULT_TEAM)
--c, --channel <name|id>   Target channel (overrides NOTIFY_TEAMS_DEFAULT_CHANNEL)
-    --subject <text>      Optional subject line shown above the message body
-    --html                Treat message body as HTML (Teams HTML subset)
-    --dry-run             Print the resolved request without sending
+    --webhook <url>       Webhook URL — overrides NOTIFY_TEAMS_WEBHOOK_URL
+    --subject <text>      Optional subject line shown as the card title
+    --template <path>     Path to a MessageCard JSON template file
+    --html                Treat message body as HTML
+    --dry-run             Print the resolved options without sending
 -q, --quiet               Suppress output; rely on exit code only
 
 Global:
     --env-file <path>     Load credentials from a key=value file
 ```
-
-`--team` and `--channel` accept either a name or a GUID. Names require a Graph API lookup — use `notify list` to find IDs for production scripts where stability matters.
-
-## HTML support
-
-Pass `--html` to send formatted content. Teams renders a subset of HTML:
-
-| Tag | Renders as |
-|---|---|
-| `<b>`, `<strong>` | Bold |
-| `<i>`, `<em>` | Italic |
-| `<s>` | Strikethrough |
-| `<u>` | Underline |
-| `<code>` | Inline code |
-| `<pre>` | Code block |
-| `<ul>` / `<ol>` / `<li>` | Lists |
-| `<blockquote>` | Quote block |
-| `<a href="...">` | Hyperlink |
-| `<br>`, `<p>` | Line breaks / paragraphs |
-
-Headings, images, and tables are not supported and will be stripped by Teams.
 
 ## Using Notify.Teams in your .NET app
 
@@ -147,41 +127,41 @@ If you want to send Teams messages directly from a .NET application without the 
 ```csharp
 using Notify.Teams.Models;
 using Notify.Teams.Services;
+using Microsoft.Extensions.Logging.Abstractions;
 
-var credentials = new TeamsCredentials
+var credentials = new WebhookCredentials
 {
-    TenantId     = Environment.GetEnvironmentVariable("NOTIFY_TEAMS_TENANT_ID")!,
-    ClientId     = Environment.GetEnvironmentVariable("NOTIFY_TEAMS_CLIENT_ID")!,
-    ClientSecret = Environment.GetEnvironmentVariable("NOTIFY_TEAMS_CLIENT_SECRET")!,
+    WebhookUrl = Environment.GetEnvironmentVariable("NOTIFY_TEAMS_WEBHOOK_URL")!,
 };
 
-var auth    = new AuthService(credentials);
-var graph   = new GraphService(auth.BuildGraphClient());
+var service = new WebhookService(new HttpClient(), NullLogger<WebhookService>.Instance);
 
-var teamId    = await graph.ResolveTeamIdAsync("DevOps");
-var channelId = await graph.ResolveChannelIdAsync(teamId, "Alerts");
-
-await graph.SendMessageAsync(new SendMessageRequest
+await service.SendMessageAsync(new SendMessageRequest
 {
-    TeamId    = teamId,
-    ChannelId = channelId,
-    Subject   = "Deployment complete",
-    Body      = "All tests passed. Version 2.1.0 deployed to production.",
-});
+    Body    = "All tests passed. Version 2.1.0 deployed to production.",
+    Subject = "Deployment complete",
+}, credentials);
 ```
 
-See the [Notify.Teams library guide](Documentation/Providers/teams/Notify.Teams-Library-Guide.md) for full API documentation.
+To send a pre-built MessageCard JSON template with an optional subject or body override:
+
+```csharp
+using System.Text.Json.Nodes;
+
+var templateJson = await File.ReadAllTextAsync("alert-card.json");
+var template     = JsonNode.Parse(templateJson)!.AsObject();
+
+await service.SendFromTemplateAsync(template, subjectOverride: "Build Failed", bodyOverride: null, credentials);
+```
 
 ## Exit codes
 
 | Code | Meaning |
 |---|---|
 | `0` | Success |
-| `1` | General error |
-| `2` | Auth failure |
-| `3` | Team or channel not found |
-| `4` | Graph API error (throttled 429, server error 5xx) |
-| `5` | Configuration missing |
+| `1` | General error (including no message provided) |
+| `2` | HTTP error from webhook — 4xx or 5xx response from Power Automate |
+| `5` | Configuration missing — webhook URL not set |
 
 ## Licence
 

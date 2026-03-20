@@ -10,20 +10,10 @@ namespace Notify.Services;
 /// </summary>
 public class ConfigService
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        WriteIndented = true,
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-    };
-
     // Maps env var names to the AppConfig property they populate.
     private static readonly (string EnvKey, Action<AppConfig, string> Apply)[] EnvVarMap =
     [
-        ("NOTIFY_TEAMS_TENANT_ID",      (c, v) => c.TenantId       = v),
-        ("NOTIFY_TEAMS_CLIENT_ID",      (c, v) => c.ClientId       = v),
-        ("NOTIFY_TEAMS_CLIENT_SECRET",  (c, v) => c.ClientSecret   = v),
-        ("NOTIFY_TEAMS_DEFAULT_TEAM",   (c, v) => c.DefaultTeam    = v),
-        ("NOTIFY_TEAMS_DEFAULT_CHANNEL",(c, v) => c.DefaultChannel = v),
+        ("NOTIFY_TEAMS_WEBHOOK_URL", (c, v) => c.WebhookUrl = v),
     ];
 
     /// <summary>
@@ -45,14 +35,10 @@ public class ConfigService
             try
             {
                 var json = await File.ReadAllTextAsync(configFilePath);
-                var saved = JsonSerializer.Deserialize<AppConfig>(json, JsonOptions);
+                var saved = JsonSerializer.Deserialize(json, AppConfigJsonContext.Default.AppConfig);
                 if (saved is not null)
                 {
-                    if (!string.IsNullOrWhiteSpace(saved.TenantId))      config.TenantId      = saved.TenantId;
-                    if (!string.IsNullOrWhiteSpace(saved.ClientId))      config.ClientId      = saved.ClientId;
-                    if (!string.IsNullOrWhiteSpace(saved.ClientSecret))  config.ClientSecret  = saved.ClientSecret;
-                    if (!string.IsNullOrWhiteSpace(saved.DefaultTeam))   config.DefaultTeam   = saved.DefaultTeam;
-                    if (!string.IsNullOrWhiteSpace(saved.DefaultChannel)) config.DefaultChannel = saved.DefaultChannel;
+                    if (!string.IsNullOrWhiteSpace(saved.WebhookUrl)) config.WebhookUrl = saved.WebhookUrl;
                 }
             }
             catch (JsonException)
@@ -65,7 +51,7 @@ public class ConfigService
         ApplySource(config, key => Environment.GetEnvironmentVariable(key));
 
         // Layer 3 — env file (highest priority)
-        // Explicit --env-file takes precedence; fall back to .env in the current directory.
+        // Explicit --env-file takes precedence; fall back to notify.env in the current directory.
         var resolvedEnvFile = envFilePath
             ?? (File.Exists("notify.env") ? "notify.env" : null);
 
@@ -86,7 +72,7 @@ public class ConfigService
     {
         var path = GetConfigFilePath();
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-        var json = JsonSerializer.Serialize(config, JsonOptions);
+        var json = JsonSerializer.Serialize(config, AppConfigJsonContext.Default.AppConfig);
         await File.WriteAllTextAsync(path, json);
     }
 
@@ -135,3 +121,7 @@ public class ConfigService
         return result;
     }
 }
+
+[JsonSerializable(typeof(AppConfig))]
+[JsonSourceGenerationOptions(WriteIndented = true, DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
+internal partial class AppConfigJsonContext : JsonSerializerContext { }

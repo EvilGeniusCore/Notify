@@ -5,82 +5,48 @@ namespace Notify.Tests.Models;
 public class AppConfigTests
 {
     [Fact]
-    public void Validate_AllFieldsPresent_DoesNotThrow()
+    public void Validate_WithWebhookUrl_DoesNotThrow()
     {
-        var config = new AppConfig
-        {
-            TenantId     = "tenant-id",
-            ClientId     = "client-id",
-            ClientSecret = "client-secret"
-        };
+        var config = new AppConfig { WebhookUrl = "https://example.com/webhook" };
 
         var ex = Record.Exception(() => config.Validate());
         Assert.Null(ex);
     }
 
     [Fact]
-    public void Validate_MissingTenantId_ThrowsWithFieldName()
-    {
-        var config = new AppConfig { ClientId = "c", ClientSecret = "s" };
-
-        var ex = Assert.Throws<InvalidOperationException>(() => config.Validate());
-        Assert.Contains("NOTIFY_TEAMS_TENANT_ID", ex.Message);
-    }
-
-    [Fact]
-    public void Validate_MissingClientId_ThrowsWithFieldName()
-    {
-        var config = new AppConfig { TenantId = "t", ClientSecret = "s" };
-
-        var ex = Assert.Throws<InvalidOperationException>(() => config.Validate());
-        Assert.Contains("NOTIFY_TEAMS_CLIENT_ID", ex.Message);
-    }
-
-    [Fact]
-    public void Validate_MissingClientSecret_ThrowsWithFieldName()
-    {
-        var config = new AppConfig { TenantId = "t", ClientId = "c" };
-
-        var ex = Assert.Throws<InvalidOperationException>(() => config.Validate());
-        Assert.Contains("NOTIFY_TEAMS_CLIENT_SECRET", ex.Message);
-    }
-
-    [Fact]
-    public void Validate_MultipleFieldsMissing_ListsAllInMessage()
+    public void Validate_NullWebhookUrl_Throws()
     {
         var config = new AppConfig();
 
-        var ex = Assert.Throws<InvalidOperationException>(() => config.Validate());
-        Assert.Contains("NOTIFY_TEAMS_TENANT_ID",     ex.Message);
-        Assert.Contains("NOTIFY_TEAMS_CLIENT_ID",     ex.Message);
-        Assert.Contains("NOTIFY_TEAMS_CLIENT_SECRET", ex.Message);
+        Assert.Throws<InvalidOperationException>(() => config.Validate());
     }
 
     [Theory]
     [InlineData("")]
     [InlineData("   ")]
-    public void Validate_WhitespaceTenantId_ThrowsWithFieldName(string value)
+    public void Validate_WhitespaceWebhookUrl_Throws(string value)
     {
-        var config = new AppConfig { TenantId = value, ClientId = "c", ClientSecret = "s" };
+        var config = new AppConfig { WebhookUrl = value };
 
-        var ex = Assert.Throws<InvalidOperationException>(() => config.Validate());
-        Assert.Contains("NOTIFY_TEAMS_TENANT_ID", ex.Message);
+        Assert.Throws<InvalidOperationException>(() => config.Validate());
     }
 
     [Fact]
-    public void ToCredentials_MapsAllThreeFields()
+    public void Validate_ErrorMessage_ContainsEnvVarName()
     {
-        var config = new AppConfig
-        {
-            TenantId     = "t",
-            ClientId     = "c",
-            ClientSecret = "s"
-        };
+        var config = new AppConfig();
+
+        var ex = Assert.Throws<InvalidOperationException>(() => config.Validate());
+        Assert.Contains("NOTIFY_TEAMS_WEBHOOK_URL", ex.Message);
+    }
+
+    [Fact]
+    public void ToCredentials_MapsWebhookUrl()
+    {
+        var config = new AppConfig { WebhookUrl = "https://example.com/webhook" };
 
         var creds = config.ToCredentials();
 
-        Assert.Equal("t", creds.TenantId);
-        Assert.Equal("c", creds.ClientId);
-        Assert.Equal("s", creds.ClientSecret);
+        Assert.Equal("https://example.com/webhook", creds.WebhookUrl);
     }
 }

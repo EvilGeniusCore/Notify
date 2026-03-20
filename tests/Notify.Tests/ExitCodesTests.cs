@@ -7,9 +7,7 @@ public class ExitCodesTests
     {
         Assert.Equal(0, ExitCodes.Success);
         Assert.Equal(1, ExitCodes.GeneralError);
-        Assert.Equal(2, ExitCodes.AuthFailure);
-        Assert.Equal(3, ExitCodes.NotFound);
-        Assert.Equal(4, ExitCodes.GraphApiError);
+        Assert.Equal(2, ExitCodes.WebhookError);
         Assert.Equal(5, ExitCodes.ConfigurationMissing);
     }
 
@@ -20,10 +18,8 @@ public class ExitCodesTests
         {
             ExitCodes.Success,
             ExitCodes.GeneralError,
-            ExitCodes.AuthFailure,
-            ExitCodes.NotFound,
-            ExitCodes.GraphApiError,
-            ExitCodes.ConfigurationMissing
+            ExitCodes.WebhookError,
+            ExitCodes.ConfigurationMissing,
         };
 
         Assert.Equal(codes.Length, codes.Distinct().Count());
